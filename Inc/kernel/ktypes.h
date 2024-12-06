@@ -105,15 +105,15 @@ typedef enum kErr
     K_ERR_MUTEX_NOT_LOCKED = 0xFFFFFFEE, /* Tried to lock an unlocked mutex */
     K_ERR_MUTEX_NOT_OWNER = 0xFFFFFFED, /* Tried to unlock an owned mutex */
     K_ERR_AMBOX_NULL_MESG = 0xFFFFFFE9, /* Message address is null on a mailbox      */
-    K_ERR_MBOX_FLAGS = 0xFFFFFFE8, /* Invalid configuration flags for a mailbox */
-                                   /*  Valid range is 0x00-0x03 */
+    K_ERR_RESERVED = 0xFFFFFFE8,
     K_ERR_MBOX_SIZE = 0xFFFFFFE7,  /* Invalid mbox size.  Max 255 */
     K_ERR_AMBOX_SIZE = 0xFFFFFFE6, /* Invalid ambox size. Max 255 */
     K_ERR_MESG_CPY = 0xFFFFFFE5,   /* Failure when copying (recv/send) mesg/mail */
     K_ERR_PDBUF_SIZE = 0xFFFFFFE4, /* Invalid size of mesg attached to a PD Buffer */
     K_ERR_SEM_INVALID_VAL = 0xFFFFFFE3, /* Invalid semaphore value */
     K_ERR_QUERY_UNDEFINED = 0xFFFFFFE2,  /* Undefined query state for a kobj */
-    K_ERR_TASK_NOT_RUNNING = 0xFFFFFFE1
+    K_ERR_TASK_NOT_RUNNING = 0xFFFFFFE1,
+    K_ERR_INVALID_TSLICE = 0xFFFFFFE0
 
 } K_ERR;
 

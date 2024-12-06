@@ -32,7 +32,7 @@
 #endif
 
 #ifndef K_DEF_MINIMAL_VER
-#error "Mising K0BA version"
+#error "Missing K0BA version"
 #endif
 
 #if (!defined(_STDDEF_H) && !defined(_STDDEF_H_) && !defined(_ANSI_STDDEF_H) \

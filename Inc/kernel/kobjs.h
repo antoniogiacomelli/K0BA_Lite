@@ -53,12 +53,12 @@ struct kTcb
 	TID uPid;             /* User-defined   task ID */
 	PRIO priority;        /* Task priority (0-31) 32 is invalid */
 	PRIO realPrio;        /* Real priority (for prio inheritance) */
+#if (K_DEF_SCH_TSLICE == ON)
 	TICK timeSlice;       /* Time-slice duration 		   */
 	TICK timeLeft;        /* Remaining time-slice 	   */
+#endif
 	STRING taskName;      /* Task name */
     BOOL runToCompl;      /* Cooperative-only task     */
-
-
 	TICK busyWaitTime;    /* Busy-Delay in ticks 			   */
     TICK   attmptCntr;      /* Trying to access CR */
 
@@ -190,8 +190,7 @@ struct kMailbox
     BOOL init; /* Init 			  */
     /*[CONTROL]*/
     K_MBOX_STATUS mboxState;
-    K_TCB* writeOwnerPtr;
-    K_TCB* readOwnerPtr;
+    K_TCB* owner;
     struct kList writersMailQueue;
     struct kList readersMailQueue;
     /*EXCHANGE*/

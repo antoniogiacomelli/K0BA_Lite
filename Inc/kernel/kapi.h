@@ -41,7 +41,7 @@
 
 #include "kconfig.h"
 
-#if (CUSTOM_ENV)
+#if (CUSTOM_ENV==1)
 #include "kenv.h"
 #endif
 
@@ -67,27 +67,33 @@
  *
  * \param stackSize    Size of the task stack (in WORDS. 1WORD=4BYTES)
  *
- * \param timeSlice    Time-slice for the task. If time-slice is OFF, the API
- *                     does not change, but value will be ignored. For time-slices
- *                     a value 0 is the same as a value 1 - 1 tick interval.
+ * \param timeSlice    UNSIGNED integer for time-slice.
+ * 					   If time-slice is ON, value 0 is invalid.
+ *					   If OFF, value is ignored, but API does not change
+ *					   (as guidelined in the book 'Polemical Code')
  *
  * \param priority     Task priority - valid range: 0-31.
  *
  * \param runToCompl   If this flag is 'TRUE',  the task once dispatched
- *                     although can be interrupted will, will NEVER be preempted
- *                     by  another user task until it suspends again. It is a
- *                     brute-force approach.
- *                     The typical use-case is for deferred handlers which start
- *                     pendeded, are signaled by an ISR, run and pend again.
- *                     These tasks normally are high-priority tasks, and quite
- *                     short - so, you need a good reason to use this flag.
- *
+ *                     although can be interrupted by tick and other hardware
+ *                     interrupt lines, won't be preempted by user tasks.
+ *                     runToCompl tasks are normally the top half of interrupt
+ *                     handlers that are not urgent enough to bypass the scheduler,
+ *                     and can be deferred, still taking precedence above every other
+ *                     user task.
  *
  * \return K_SUCCESS on success, K_ERROR on failure
  */
-K_ERR kCreateTask(TASKENTRY const taskFuncPtr, STRING taskName, TID const id,
-        UINT32* const stackAddrPtr, UINT32 const stackSize,
-        TICK const timeSlice, PRIO const priority, BOOL const runToCompl);
+K_ERR kCreateTask(TASKENTRY const taskFuncPtr,
+		STRING taskName,
+		TID const id,
+        UINT32* const stackAddrPtr,
+		UINT32 const stackSize,
+#if(K_DEF_SCH_TSLICE==ON)
+        TICK const timeSlice,
+#endif
+		PRIO const priority,
+		BOOL const runToCompl);
 
 /**
  * \brief Yields the current task.
@@ -465,16 +471,22 @@ INT32 kPipeWrite(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
  * DIRECT TASK SIGNAL
  ******************************************************************************/
 /**
- * \brief Put the current task into a PENDING state,
+ * \brief A caller task goes to a PENDING state, waiting for a kSignal.
  */
 VOID kPend(VOID);
 
 /**
- * \brief Direct Signal a task
+ * \brief A task suspends another task. The task goes to a SUSPENDED state.
+ *
+ */
+VOID kSuspend(TID const taskID);
+
+/**
+ * \brief Direct Signal a task either PENDING or SUSPENDED. Target task is resu
+ *        med.
  * \param taskID The ID of the task to signal
  */
 VOID kSignal(PID const taskID);
-
 
 /******************************************************************************
  * SLEEP/WAKE-UP ON EVENTS

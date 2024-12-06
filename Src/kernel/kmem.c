@@ -33,7 +33,7 @@ K_ERR kMemInit(K_MEM* const kobj, ADDR const memPoolPtr,
     {
         KFAULT(FAULT_NULL_OBJ);
         K_EXIT_CR
-        return K_ERR_MEM_INIT;
+        return (K_ERR_MEM_INIT);
     }
 #if (K_DEF_MEMBLOCK_ALIGN_4==ON)
     /*round up to next value multiple of 4 (if not a multiple)*/
@@ -74,7 +74,7 @@ ADDR kMemAlloc(K_MEM* const kobj)
 
     if (kobj->nFreeBlocks == 0)
     {
-        return NULL;
+        return (NULL);
     }
     K_CR_AREA
 
@@ -87,7 +87,7 @@ ADDR kMemAlloc(K_MEM* const kobj)
     if (allocPtr != NULL)
         kobj->nFreeBlocks -= 1;
     K_EXIT_CR
-    return allocPtr;
+    return (allocPtr);
 }
 
 K_ERR kMemFree(K_MEM* const kobj, ADDR const blockPtr)
@@ -95,11 +95,11 @@ K_ERR kMemFree(K_MEM* const kobj, ADDR const blockPtr)
 
     if (kobj->nFreeBlocks == kobj->nMaxBlocks)
     {
-        return K_ERR_MEM_FREE;
+        return (K_ERR_MEM_FREE);
     }
     if (IS_NULL_PTR(kobj) || IS_NULL_PTR(blockPtr))
     {
-        return K_ERR_MEM_FREE;
+        return (K_ERR_MEM_FREE);
     }
     K_CR_AREA
     K_ENTER_CR
@@ -107,6 +107,6 @@ K_ERR kMemFree(K_MEM* const kobj, ADDR const blockPtr)
     kobj->freeListPtr = blockPtr;
     kobj->nFreeBlocks += 1;
     K_EXIT_CR
-    return K_SUCCESS;
+    return (K_SUCCESS);
 }
 

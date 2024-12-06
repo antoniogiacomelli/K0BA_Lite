@@ -31,7 +31,7 @@
 /*******************************************************************************
  * DIRECT TASK PENDING/SIGNAL
  *******************************************************************************/
-VOID kPend(void)
+K_ERR kPend(void)
 {
 
     if (kIsISR())
@@ -48,18 +48,20 @@ VOID kPend(void)
     K_PEND_CTXTSWTCH
 
     K_EXIT_CR
+    return(err);
 }
 
-VOID kSignal(PID const taskID)
+K_ERR kSignal(TID const taskID)
 {
 
+    K_ERR err=-1;
     K_CR_AREA
     K_ENTER_CR
     PID pid = kGetTaskPID(taskID);
-    if (tcbs[pid].status == PENDING)
+    if (tcbs[pid].status == PENDING || tcbs[pid].status == SUSPENDED)
     {
         K_TCB* tcbGotPtr = &tcbs[pid];
-        K_ERR err = kTCBQRem( &sleepingQueue, &tcbGotPtr);
+        err = kTCBQRem( &sleepingQueue, &tcbGotPtr);
         assert( !err);
         err = kReadyCtxtSwtch(tcbGotPtr);
         assert( !err);
@@ -69,32 +71,20 @@ VOID kSignal(PID const taskID)
         tcbs[pid].lostSignals += 1;
     }
     K_EXIT_CR
+    return(err);
 }
 
-VOID kSuspend(TID taskID)
+K_ERR kSuspend(TID const taskID)
 {
     K_CR_AREA
     K_ENTER_CR
     K_ERR err = -1;
     PID pid = kGetTaskPID(taskID);
-    kUnRun_(&sleepingQueue, &tcbs[pid], SUSPENDED);
+    err=kUnRun_(&sleepingQueue, &tcbs[pid], SUSPENDED);
     assert(err==0);
     K_EXIT_CR
+    return(err);
 }
-
-VOID kResume(TID taskID)
-{
-    K_CR_AREA
-    K_ENTER_CR
-    K_ERR err = -1;
-    PID pid = kGetTaskPID(taskID);
-    assert(tcbs[pid].status==SUSPENDED);
-    err=kReadyCtxtSwtch(&tcbs[pid]);
-    assert(err==0);
-    K_EXIT_CR
-}
-
-
 
 #if (K_DEF_SLEEPWAKE==ON)
 /******************************************************************************

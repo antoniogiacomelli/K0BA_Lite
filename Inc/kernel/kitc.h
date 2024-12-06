@@ -24,16 +24,16 @@ extern "C" {
 #include "klist.h"
 #include "ksch.h"
 
-VOID kPend(VOID);
-VOID kSignal(PID const);
-VOID kSuspend(TID);
-VOID kResume(TID);
+K_ERR kPend(VOID);
+K_ERR kSignal(TID const);
+K_ERR kSuspend(TID const);
 
 #if(K_DEF_SEMA==ON)
 
 K_ERR kSemaInit(K_SEMA* const, INT32 const);
 VOID kSemaWait(K_SEMA* const);
 VOID kSemaSignal(K_SEMA* const);
+K_ERR kSemaAttmpt(K_SEMA* const, TICK);
 
 static inline VOID kSignalAttmpt_(PID pid)
 {
@@ -76,6 +76,15 @@ VOID kEventWake(K_EVENT* const);
 
 #endif
 
+/*
+ *          ~~~~~
+ 	   ____
+	  /_|__\.´´<´´<...~~~~´´´´´....                   ,.~~~~~~~..'´
+	  \_|__/     \                 ´´.__ ,.~~~~~~~..'´
+                 /o>
+         ~~~~
+
+*/
 static inline K_ERR kUnRun_(K_TCBQ* queuePtr, K_TCB* tcbPtr,
         K_TASK_STATUS status)
 {

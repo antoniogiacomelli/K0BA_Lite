@@ -515,10 +515,16 @@ K_ERR kInitTcb_(TASKENTRY const taskFuncPtr, UINT32* const stackAddrPtr,
     return (K_ERROR);
 }
 
-K_ERR kCreateTask(TASKENTRY const taskFuncPtr, char const* taskName,
-        TID const id, UINT32* const stackAddrPtr, UINT32 const stackSize,
-        TICK const timeSlice, PRIO const priority, BOOL const runToCompl)
-
+K_ERR kCreateTask(TASKENTRY const taskFuncPtr,
+		STRING taskName,
+		TID const id,
+        UINT32* const stackAddrPtr,
+		UINT32 const stackSize,
+#if(K_DEF_SCH_TSLICE==ON)
+        TICK const timeSlice,
+#endif
+		PRIO const priority,
+		BOOL const runToCompl)
 {
     if (id == TIMHANDLER_ID || id == IDLETASK_ID)
     {
@@ -536,7 +542,11 @@ K_ERR kCreateTask(TASKENTRY const taskFuncPtr, char const* taskName,
         tcbs[pPid].taskName = "IdleTask";
         tcbs[pPid].uPid = IDLETASK_ID;
         tcbs[pPid].runToCompl = FALSE;
+#if(K_DEF_SCH_TSLICE==ON)
+
         tcbs[pPid].timeSlice = 0;
+#endif
+
         pPid += 1;
         /*initialise TIMER HANDLER TASK */
         assert(
@@ -547,12 +557,22 @@ K_ERR kCreateTask(TASKENTRY const taskFuncPtr, char const* taskName,
         tcbs[pPid].taskName = "TimHandlerTask";
         tcbs[pPid].uPid = TIMHANDLER_ID;
         tcbs[pPid].runToCompl = TRUE;
+#if(K_DEF_SCH_TSLICE==ON)
+
         tcbs[pPid].timeSlice = 0;
+#endif
+
         pPid += 1;
 
     }
     if (kInitTcb_(taskFuncPtr, stackAddrPtr, stackSize) == K_SUCCESS)
     {
+#if(K_DEF_SCH_TSLICE==ON)
+        {
+            assert(timeSlice>0);
+            return (K_ERR_INVALID_TSLICE);
+        }
+#endif
         if (priority > idleTaskPrio)
         {
             assert(FAULT_INVALID_TASK_PRIO);
@@ -561,8 +581,11 @@ K_ERR kCreateTask(TASKENTRY const taskFuncPtr, char const* taskName,
         tcbs[pPid].priority = priority;
         tcbs[pPid].realPrio = priority;
         tcbs[pPid].taskName = taskName;
+#if(K_DEF_SCH_TSLICE==ON)
+
         tcbs[pPid].timeSlice = timeSlice;
         tcbs[pPid].timeLeft = timeSlice;
+#endif
         tcbs[pPid].uPid = id;
         tcbs[pPid].runToCompl = runToCompl;
         pPid += 1;
@@ -588,10 +611,10 @@ UINT32 kEnterCR(VOID)
         asm volatile ("CPSID I");
         asm volatile("ISB");
 
-        return crState;
+        return (crState);
     }
     asm volatile("DSB");
-    return crState;
+    return (crState);
 }
 
 VOID kExitCR(UINT32 crState)

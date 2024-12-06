@@ -46,7 +46,7 @@
 #define ON     (1)
 #define OFF    (0)
 
-#define CUSTOM_ENV (0) /* include headers for HAL and compiler in kenv.h */
+#define CUSTOM_ENV (1) /* include headers for HAL and compiler in kenv.h */
 /* and set this macro to 1                        */
 
 
@@ -113,21 +113,15 @@
 
 #define K_DEF_SEMA                    (ON)
 
-#if (K_DEF_SEMA==ON)
-
-#if (DEADCODE) /* TBI */
 /*** When a semaphore blocks a task it enqueues it on its control queue.      */
 /*** This enqueue can be ordered by priority or on a FIFO                     */
 /*** This option for a FIFO might alleviate any low priority tasks from       */
 /*** starving.                                                                */
 
-#define K_DEF_SEMA_ENQ_PRIO  (1)
-#define K_DEF_SEMA_ENQ_FIFO  (2)
+/*** OPTIONS: (K_DEF_SEMA_ENQ_PRIO)  */
+/***          (K_DEF_SEMA_ENQ_FIFO)  */
+#define K_DEF_SEMA_ENQ       (K_DEF_SEMA_ENQ_PRIO)
 
-#define K_DEF_SEMA_ENQ       (0)
-#endif
-
-#endif
 
 /******************************************************************************/
 /*** [Mutexes] ****************************************************************/
@@ -157,7 +151,7 @@
 /*** Indirect Blocking Message Queues depend on semaphore primitives          */
 #if (K_DEF_SEMA==ON)
 
-#define K_DEF_MESGQ 			      (OFF)
+#define K_DEF_MESGQ 			      (ON)
 
 #if (K_DEF_MESGQ == ON)
 

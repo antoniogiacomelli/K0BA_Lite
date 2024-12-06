@@ -46,11 +46,16 @@ extern "C" {
 #define TIMER_SIZE   sizeof(K_TIMER)
 
 #define _N_SYSTASKS          2 /*idle task + tim handler*/
+
+/*** Config values */
 #define NTHREADS             (K_DEF_N_USRTASKS + _N_SYSTASKS)
+#define NPRIO               (K_DEF_MIN_PRIO + 1)
+#define K_DEF_SEMA_ENQ_PRIO  (0)
+#define K_DEF_SEMA_ENQ_FIFO  (1)
 #define TICK_10MS           (SystemCoreClock/1000)  /*  Tick period of 10ms */
 #define TICK_5MS            (SystemCoreClock/2000)  /* Tick period of 5ms */
 #define TICK_1MS            (SystemCoreClock/10000) /*  Tick period of 1ms */
-#define NPRIO               (K_DEF_MIN_PRIO + 1)
+
 
 /* Mapped API */
 
@@ -63,15 +68,14 @@ typedef struct kListNode NODE;
 typedef struct kTcb TCB;
 
 
-/*
- *                                               .~~~~~~~~~~~~~~~~~<<>>
- * the kite is         nutz:     ,....,,........´
- *                             ,'
- *                           o//
- *                     ~~   /
- *                         / \
- *
- */
+/*                                                                    ____
+ *                                                  .~~~~.,      ..~~/__|_\
+ *                                ,....,,.   ....´`.´      ´´..-'    \__|_/
+ *                              ,'        `.´
+ *                            o//
+ *                           /
+ *                          ))
+ *****************************************************************************************/
 
 /* SYNCH PRIMITIVES */
 
@@ -148,7 +152,7 @@ typedef struct kTcb TCB;
 #define K_EXIT_CR  kExitCR(crState);
 
 /* brief Trigger Context Switch */
-#define K_PEND_CTXTSWTCH K_TRAP_PENDSV;
+#define K_PEND_CTXTSWTCH K_TRAP_PENDSV
 
 #define READY_HIGHER_PRIO(ptr) ((ptr->priority < nextTaskPrio) ? 1 : 0)
 
@@ -176,9 +180,9 @@ typedef struct kTcb TCB;
  */
 #define K_TRAP_PENDSV  \
                        \
-    __ISB();           \
+    ISB		           \
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk; \
-    __DSB();
+    DSB
 
 /*
  * brief Software interrupt (trap) for Supervisor Call
@@ -221,10 +225,26 @@ __STATIC_FORCEINLINE unsigned kIsISR()
 {
     unsigned ipsr_value;
     asm("MRS %0, IPSR" : "=r"(ipsr_value));
+    DMB
     return (ipsr_value);
 }
 
-/*  ~~~~~~~~~~~~~~~~~<<>> */
+/*
+ *
+ *                                                                    ____
+ *                                                  .~~~~.,      ..~~/__|_\
+ *                                ,....,,.   ....´`.´      ´´..-'    \__|_/
+ *                              ,'        `.´
+ *                ,.~~~~~~~..'´
+ *           ~.o./
+ *        ~´`-´
+ *        ~-'
+ *
+ *
+ *     '
+ *    .
+ *********************************************************************************/
+
 #ifdef __cplusplus
 }
 #endif
