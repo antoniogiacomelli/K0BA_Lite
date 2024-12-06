@@ -46,7 +46,7 @@
 #define ON     (1)
 #define OFF    (0)
 
-#define CUSTOM_ENV (1) /* include headers for HAL and compiler in kenv.h */
+#define CUSTOM_ENV (0) /* include headers for HAL and compiler in kenv.h */
 /* and set this macro to 1                        */
 
 
