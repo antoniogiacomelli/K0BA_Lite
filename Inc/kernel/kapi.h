@@ -174,16 +174,6 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 #endif
 
-
-/******************************************************************************/
-/* DIRECT MESSAGING                                                           */
-/******************************************************************************/
-
-#if (K_DEF_DMESG==ON)
-
-
-#endif
-
 /******************************************************************************/
 /* MESSAGE QUEUE                                                              */
 /******************************************************************************/
@@ -191,20 +181,10 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 /**
  * \brief  Initialise an indirect blocking message queue.
- *         These queues use a central pool of system messages that wrap the
- *         message contents within sender id, size and address.
- *         Depending on how you choose to  receive it copies the message to an
- *         address passed by the receiver or pass the address of the message.
- *         If receiving an address, you need to free it yourself after
- *         consuming the message.
- *
+
  * \param kobj          Pointer to the message queue kernel object.
  * \param mesgPoolPtr   Address of the allocated memory for the message
  *                      contents.
- *                      Pass NULL, if wishing to send/recv pointers you will
- *                      allocate and free.
- *                      Recommend declare it as a BYTE array of queueSize x
- *                      mesgSize bytes: BYTE mesgPoolFoo[QUEUE_SIZE][ITEM_SIZE]
  * \param queueSize     Number of items the queue support before blocking full.
  * \param mesgSize      Size of each item/message.
  * \return              See ktypes.h
@@ -236,23 +216,16 @@ K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR recvMesgPtr, TID* senderTIDPtr);
 
 /**
- * \brief                 Receive a pointer to a message from a queue.
+ * \brief                 Send a message copy to the queue front.
  * \param kobj            Message Queue address.
- * \param recvMesgPPtr    Pointer-to-a-pointer to store the message address.
- * \param senderTIDPtr    Pointer to the variable to store the sender task id.
+ * \param mesgPtr		  Message addr.
+ * \param mesgSize        Size.
  * \return                See ktypes.h
  */
 
 K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
 
-/**
- * \brief				 Enqueue a message on the queue head.
- * \param kobj			 Message queue addresss
- * \param mesgPtr		 Message pointer
- * \param mesgSize		 Message Size
- * \return				 See ktypes.h
- */
 
 #endif /*K_DEF_MESGQ*/
 
