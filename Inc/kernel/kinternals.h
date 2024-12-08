@@ -50,8 +50,8 @@ extern "C" {
 /*** Config values */
 #define NTHREADS             (K_DEF_N_USRTASKS + _N_SYSTASKS)
 #define NPRIO               (K_DEF_MIN_PRIO + 1)
-#define K_DEF_SEMA_ENQ_PRIO  (0)
-#define K_DEF_SEMA_ENQ_FIFO  (1)
+#define K_DEF_ENQ_PRIO  (0)
+#define K_DEF_ENQ_FIFO  (1)
 #define TICK_10MS           (SystemCoreClock/1000)  /*  Tick period of 10ms */
 #define TICK_5MS            (SystemCoreClock/2000)  /* Tick period of 5ms */
 #define TICK_1MS            (SystemCoreClock/10000) /*  Tick period of 1ms */

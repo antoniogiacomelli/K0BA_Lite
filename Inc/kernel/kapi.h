@@ -174,6 +174,17 @@ VOID kMutexUnlock(K_MUTEX* const kobj);
 K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 #endif
+
+
+/******************************************************************************/
+/* DIRECT MESSAGING                                                           */
+/******************************************************************************/
+
+#if (K_DEF_DMESG==ON)
+
+
+#endif
+
 /******************************************************************************/
 /* MESSAGE QUEUE                                                              */
 /******************************************************************************/
@@ -261,8 +272,6 @@ K_ERR kMesgQJamPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
  *******************************************************************************/
 
 #if (K_DEF_MBOX == ON)
-#define K_ACK         (1)
-#define K_NACK        (0)
 
 /**
  * \brief               Initialises an indirect blocking mailbox.
@@ -273,27 +282,25 @@ K_ERR kMesgQJamPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
  *                      message.
  * \return              See ktypes.h
  */
-K_ERR kMboxInit(K_MBOX* const kobj, BYTE mailSize,
+K_ERR kMboxInit(K_MBOX* const kobj, SIZE mailSize,
         ADDR initMailPtr);
 
 /**
  * \brief               Post to a mailbox. Task blocks when full.
  * \param kobj          Mailbox address.
  * \param sendPtr       Message adddress.
- * \param needAck       K_ACK  (1) will pend for an ack signal from receiver.
- *                      K_NACK (0)
  * \return              See ktypes.h
  */
-K_ERR kMboxPost(K_MBOX* const kobj, ADDR const sendPtr, BOOL needAck);
+K_ERR kMboxPost(K_MBOX* const kobj, ADDR const sendPtr);
 
 /**
  * \brief               Pend on a mailbox to receive a message. Block if empty.
  *
  * \param kobj          Mailbox address.
- * \param recvPPtr      Pointer-to-pointer to store the message address.
+ * \param recvPPtr      Pointer to copy the message.
  * \return              See ktypes.h
  */
-TID kMboxPend(K_MBOX* const kobj, ADDR* recvPPtr);
+TID kMboxPend(K_MBOX* const kobj, ADDR* recvPtr);
 
 /**
  * \brief        Return status of a mailbox: full, empty.

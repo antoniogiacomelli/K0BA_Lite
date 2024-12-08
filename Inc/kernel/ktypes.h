@@ -69,8 +69,8 @@ typedef void (*CALLOUT)(void*); /* Callout (timers)             */
  */
 typedef enum kErr
 {
-//TODO: TRIM RET VALS FOR EACH KERNEL OBJECT:
-//TODO: 32-BIT: OBJ_TYPE:KERNEL_MODULE:ERROR_TYPE:ERROR_SPECIFICS
+/*TODO: TRIM RET VALS FOR EACH KERNEL OBJECT:*/
+/*TODO: 32-BIT: OBJ_TYPE:KERNEL_MODULE:ERROR_TYPE:ERROR_SPECIFICS*/
 
     /* SUCCESSFUL: 0U */
     K_SUCCESS = 0, /* No Error */
@@ -85,35 +85,35 @@ typedef enum kErr
     K_QUERY_MUTEX_UNLOCKED = 0x7,
 
     /* FAULTY RETURN VALUES: negative */
-    K_ERROR = -1, /* (0xFFFFFFFF) Generic error placeholder */
-    K_ERR_OBJ_NULL = 0xFFFFFFFE, /* A null object was passed as a parameter */
-    K_ERR_LIST_ITEM_NOT_FOUND = 0xFFFFFFFD, /* Item not found on a K_LIST */
-    K_ERR_LIST_EMPTY = 0xFFFFFFFC, /* Empty list */
-    K_ERR_MESG_SIZE = 0xFFFFFFFB, /* Invalid message size */
-    K_ERR_MEM_INIT = 0xFFFFFFFA, /* Error initialising memory control block */
-    K_ERR_MEM_FREE = 0xFFFFFFF9, /* Error when freeing an allocated memory */
-    K_ERR_MEM_ALLOC = 0xFFFFFFF8, /* Error allocating memory */
-    K_ERR_INVALID_TID = 0xFFFFFFF7, /* Invalid user-assigned task IDs are 0 or 255*/
-    K_ERR_INVALID_Q_SIZE = 0xFFFFFFF6, /* Maximum message queue size is 255 items */
-    K_ERR_INVALID_QMESG_SIZE = 0xFFFFFFF5, /* Maximum message for a message queue is 255 bytes */
-    K_ERR_INVALID_BYTEPOOL_SIZE = 0xFFFFFFF4, /* Maximum byte pool size is 255 bytes (254 effective) */
-    K_ERR_OBJ_NOT_INIT = 0xFFFFFFF3, /* Tried to use an unitialised kernel object */
-    K_ERR_SYS_MESG_GET = 0xFFFFFFF2, /* Could not get a mesg buffer from the system pool */
-    K_ERR_SYS_MESG_PUT = 0xFFFFFFF1, /* Could not return a mesg buffer from the system pool */
-    K_ERR_MEM_CPY = 0xFFFFFFF0, /* Error when copying a chunk of bytes from one addr to other */
-    K_ERR_INVALID_PRIO = 0xFFFFFFEF, /* Valid task priority range: 0-31. */
-    K_ERR_MUTEX_NOT_LOCKED = 0xFFFFFFEE, /* Tried to lock an unlocked mutex */
-    K_ERR_MUTEX_NOT_OWNER = 0xFFFFFFED, /* Tried to unlock an owned mutex */
-    K_ERR_AMBOX_NULL_MESG = 0xFFFFFFE9, /* Message address is null on a mailbox      */
-    K_ERR_RESERVED = 0xFFFFFFE8,
-    K_ERR_MBOX_SIZE = 0xFFFFFFE7,  /* Invalid mbox size.  Max 255 */
-    K_ERR_AMBOX_SIZE = 0xFFFFFFE6, /* Invalid ambox size. Max 255 */
-    K_ERR_MESG_CPY = 0xFFFFFFE5,   /* Failure when copying (recv/send) mesg/mail */
-    K_ERR_PDBUF_SIZE = 0xFFFFFFE4, /* Invalid size of mesg attached to a PD Buffer */
-    K_ERR_SEM_INVALID_VAL = 0xFFFFFFE3, /* Invalid semaphore value */
-    K_ERR_QUERY_UNDEFINED = 0xFFFFFFE2,  /* Undefined query state for a kobj */
-    K_ERR_TASK_NOT_RUNNING = 0xFFFFFFE1,
-    K_ERR_INVALID_TSLICE = 0xFFFFFFE0
+    K_ERROR = (int)0xFFFFFFF, /* (0xFFFFFFFF) Generic error placeholder */
+    K_ERR_OBJ_NULL = (int)0xFFFFFFFE, /* A null object was passed as a parameter */
+    K_ERR_LIST_ITEM_NOT_FOUND = (int)0xFFFFFFFD, /* Item not found on a K_LIST */
+    K_ERR_LIST_EMPTY = (int)0xFFFFFFFC, /* Empty list */
+    K_ERR_MESG_SIZE = (int)0xFFFFFFFB, /* Invalid message size */
+    K_ERR_MEM_INIT = (int)0xFFFFFFFA, /* Error initialising memory control block */
+    K_ERR_MEM_FREE = (int)0xFFFFFFF9, /* Error when freeing an allocated memory */
+    K_ERR_MEM_ALLOC = (int)0xFFFFFFF8, /* Error allocating memory */
+    K_ERR_INVALID_TID = (int)0xFFFFFFF7, /* Invalid user-assigned task IDs are 0 or 255*/
+    K_ERR_INVALID_Q_SIZE = (int)0xFFFFFFF6, /* Maximum message queue size is 255 items */
+    K_ERR_INVALID_QMESG_SIZE = (int)0xFFFFFFF5, /* Maximum message for a message queue is 255 bytes */
+    K_ERR_INVALID_BYTEPOOL_SIZE = (int)0xFFFFFFF4, /* Maximum byte pool size is 255 bytes (254 effective) */
+    K_ERR_OBJ_NOT_INIT = (int)0xFFFFFFF3, /* Tried to use an unitialised kernel object */
+    K_ERR_SYS_MESG_GET = (int)0xFFFFFFF2, /* Could not get a mesg buffer from the system pool */
+    K_ERR_SYS_MESG_PUT = (int)0xFFFFFFF1, /* Could not return a mesg buffer from the system pool */
+    K_ERR_MEM_CPY = (int)0xFFFFFFF0, /* Error when copying a chunk of bytes from one addr to other */
+    K_ERR_INVALID_PRIO = (int)0xFFFFFFEF, /* Valid task priority range: 0-31. */
+    K_ERR_MUTEX_NOT_LOCKED = (int)0xFFFFFFEE, /* Tried to lock an unlocked mutex */
+    K_ERR_MUTEX_NOT_OWNER = (int)0xFFFFFFED, /* Tried to unlock an owned mutex */
+    K_ERR_AMBOX_NULL_MESG = (int)0xFFFFFFE9, /* Message address is null on a mailbox      */
+    K_ERR_RESERVED = (int)0xFFFFFFE8,	/* 'reserved' often is used so design mistakes are upcoming features */
+    K_ERR_MBOX_SIZE = (int)0xFFFFFFE7,  /* Invalid mbox size.  Max 255 */
+    K_ERR_AMBOX_SIZE = (int)0xFFFFFFE6, /* Invalid ambox size. Max 255 */
+    K_ERR_MESG_CPY = (int)0xFFFFFFE5,   /* Failure when copying (recv/send) mesg/mail */
+    K_ERR_PDBUF_SIZE = (int)0xFFFFFFE4, /* Invalid size of mesg attached to a PD Buffer */
+    K_ERR_SEM_INVALID_VAL = (int)0xFFFFFFE3, /* Invalid semaphore value */
+    K_ERR_QUERY_UNDEFINED = (int)0xFFFFFFE2,  /* Undefined query state for a kobj */
+    K_ERR_TASK_NOT_RUNNING = (int)0xFFFFFFE1,
+    K_ERR_INVALID_TSLICE = (int)0xFFFFFFE0
 
 } K_ERR;
 
@@ -164,13 +164,12 @@ typedef enum kTaskStatus
     READY,
     /*---------------------------------------------------------*/
     RUNNING,
-    /*---------------------------------------------------------*/
+    /*------------------------WAITING--------------------------*/
     PENDING,
     SLEEPING,
     BLOCKED,
-    PENDING_FULL_MBOX,     /*** Effectively, the same state:  */
-    PENDING_EMPTY_MBOX,    /*** waiting.                      */
-    PENDING_ACK,
+    PENDING_FULL_MBOX,
+    PENDING_EMPTY_MBOX,
     SUSPENDED,
     /*---------------------------------------------------------*/
     ATTEMPTING /*** Trying to acquire a resource.              */

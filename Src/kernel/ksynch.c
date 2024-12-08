@@ -34,134 +34,134 @@
 K_ERR kPend(void)
 {
 
-    if (kIsISR())
-        kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-    K_CR_AREA
+	if (kIsISR())
+		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+	K_CR_AREA
 
-    K_ENTER_CR
+	K_ENTER_CR
 
-    K_ERR err = -1;
+	K_ERR err = -1;
 
-    err = kUnRun_( &sleepingQueue, runPtr, PENDING);
-    assert( !err);
+	err = kUnRun_(&sleepingQueue, runPtr, PENDING);
+	assert(!err);
 
-    K_PEND_CTXTSWTCH
+	K_PEND_CTXTSWTCH
 
-    K_EXIT_CR
-    return(err);
+	K_EXIT_CR
+	return (err);
 }
 
 K_ERR kSignal(TID const taskID)
 {
 
-    K_ERR err=-1;
-    K_CR_AREA
-    K_ENTER_CR
-    PID pid = kGetTaskPID(taskID);
-    if (tcbs[pid].status == PENDING || tcbs[pid].status == SUSPENDED)
-    {
-        K_TCB* tcbGotPtr = &tcbs[pid];
-        err = kTCBQRem( &sleepingQueue, &tcbGotPtr);
-        assert( !err);
-        err = kReadyCtxtSwtch(tcbGotPtr);
-        assert( !err);
-    }
-    else
-    {
-        tcbs[pid].lostSignals += 1;
-    }
-    K_EXIT_CR
-    return(err);
+	K_ERR err = -1;
+	K_CR_AREA
+	K_ENTER_CR
+	PID pid = kGetTaskPID(taskID);
+	if (tcbs[pid].status == PENDING || tcbs[pid].status == SUSPENDED)
+	{
+		K_TCB *tcbGotPtr = &tcbs[pid];
+		err = kTCBQRem(&sleepingQueue, &tcbGotPtr);
+		assert(!err);
+		err = kReadyCtxtSwtch(tcbGotPtr);
+		assert(!err);
+	}
+	else
+	{
+		tcbs[pid].lostSignals += 1;
+	}
+	K_EXIT_CR
+	return (err);
 }
 
 K_ERR kSuspend(TID const taskID)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    K_ERR err = -1;
-    PID pid = kGetTaskPID(taskID);
-    err=kUnRun_(&sleepingQueue, &tcbs[pid], SUSPENDED);
-    assert(err==0);
-    K_EXIT_CR
-    return(err);
+	K_CR_AREA
+	K_ENTER_CR
+	K_ERR err = -1;
+	PID pid = kGetTaskPID(taskID);
+	err = kUnRun_(&sleepingQueue, &tcbs[pid], SUSPENDED);
+	assert(err == 0);
+	K_EXIT_CR
+	return (err);
 }
 
 #if (K_DEF_SLEEPWAKE==ON)
 /******************************************************************************
  * SLEEP/WAKE ON EVENTS
  *******************************************************************************/
-VOID kEventSleep(K_EVENT* kobj)
+VOID kEventSleep(K_EVENT *kobj)
 {
-    K_CR_AREA
-    K_ENTER_CR
+	K_CR_AREA
+	K_ENTER_CR
 
-    if (kIsISR())
-    {
-        kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-    }
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-        K_EXIT_CR
-    }
-    if (kobj->init == FALSE)
-    {
-        K_ERR err = kEventInit(kobj);
-        if (err < 0)
-            assert(0);
-    }
+	if (kIsISR())
+	{
+		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+	}
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+		K_EXIT_CR
+	}
+	if (kobj->init == FALSE)
+	{
+		K_ERR err = kEventInit(kobj);
+		if (err < 0)
+		assert(0);
+	}
 
-    if (kobj->init == TRUE)
-    {
-        K_ERR err = kUnRun_( &kobj->queue, runPtr, SLEEPING);
-        assert( !err);
-        runPtr->pendingEv = kobj;
-        K_PEND_CTXTSWTCH
-        K_EXIT_CR
-        return;
-    }
-    K_EXIT_CR
+	if (kobj->init == TRUE)
+	{
+		K_ERR err = kUnRun_( &kobj->queue, runPtr, SLEEPING);
+		assert( !err);
+		runPtr->pendingEv = kobj;
+		K_PEND_CTXTSWTCH
+		K_EXIT_CR
+		return;
+	}
+	K_EXIT_CR
 }
 
-VOID kEventWake(K_EVENT* kobj)
+VOID kEventWake(K_EVENT *kobj)
 {
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
 
-    if (kobj->queue.size == 0)
-        return;
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj->init == FALSE)
-    {
-        K_ERR err = kEventInit(kobj);
-        assert( !err);
-    }
+	if (kobj->queue.size == 0)
+		return;
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj->init == FALSE)
+	{
+		K_ERR err = kEventInit(kobj);
+		assert( !err);
+	}
 
-    SIZE sleepThreads = kobj->queue.size;
-    if (sleepThreads > 0)
-    {
-        for (SIZE i = 0; i < sleepThreads; ++i)
-        {
-            K_TCB* nextTCBPtr;
-            kTCBQDeq( &kobj->queue, &nextTCBPtr);
-            assert( !kReadyCtxtSwtch(nextTCBPtr));
-            nextTCBPtr->pendingEv = NULL;
-        }
-    }
-    K_EXIT_CR
-    return;
+	SIZE sleepThreads = kobj->queue.size;
+	if (sleepThreads > 0)
+	{
+		for (SIZE i = 0; i < sleepThreads; ++i)
+		{
+			K_TCB *nextTCBPtr;
+			kTCBQDeq(&kobj->queue, &nextTCBPtr);
+			assert(!kReadyCtxtSwtch(nextTCBPtr));
+			nextTCBPtr->pendingEv = NULL;
+		}
+	}
+	K_EXIT_CR
+	return;
 }
 
-UINT32 kEventQuery(K_EVENT* const kobj)
+UINT32 kEventQuery(K_EVENT *const kobj)
 {
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
-    return (kobj->queue.size);
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
+	return (kobj->queue.size);
 }
 
 #endif
@@ -170,172 +170,180 @@ UINT32 kEventQuery(K_EVENT* const kobj)
 /******************************************************************************
  * SEMAPHORES
  ******************************************************************************/
-K_ERR kSemaInit(K_SEMA* const kobj, INT32 const value)
+K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 {
 
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-        K_EXIT_CR
-        return K_ERR_OBJ_NULL;
-    }
-    if (value < 0)
-        kErrHandler(FAULT);
-    kobj->value = value;
-    if (kTCBQInit( & (kobj->queue), "semaQ") != K_SUCCESS)
-    {
-        kErrHandler(FAULT_LIST);
-        K_EXIT_CR
-        return (K_ERROR);
-    }
-    kobj->init = TRUE;
-    kobj->ownerPtr = NULL;
-    K_EXIT_CR
-    return K_SUCCESS;
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+		K_EXIT_CR
+		return K_ERR_OBJ_NULL;
+	}
+	if (value < 0)
+		kErrHandler(FAULT);
+	kobj->value = value;
+	if (kTCBQInit(&(kobj->queue), "semaQ") != K_SUCCESS)
+	{
+		kErrHandler(FAULT_LIST);
+		K_EXIT_CR
+		return (K_ERROR);
+	}
+	kobj->init = TRUE
+	;
+	kobj->ownerPtr = NULL;
+	K_EXIT_CR
+	return K_SUCCESS;
 }
 
-VOID kSemaWait(K_SEMA* const kobj)
+VOID kSemaWait(K_SEMA *const kobj)
 {
-    if (kIsISR())
-    {
-        kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-    }
-    if (kobj->init == FALSE)
-    {
-        kErrHandler(FAULT_OBJ_NOT_INIT);
-    }
+	if (kIsISR())
+	{
+		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+	}
+	if (kobj->init == FALSE)
+	{
+		kErrHandler(FAULT_OBJ_NOT_INIT);
+	}
 
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
 
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj->value > 0)
-    {
-        kobj->value --;
-        DMB
-    }
-    else
-    {
-        kTCBQEnqByPrio(&kobj->queue, runPtr);
-        runPtr->status=BLOCKED;
-        runPtr->pendingSema = kobj;
-        DMB
-        if (kobj->ownerPtr)
-        {   /*runPtr will block on a sema with an owner*/
-            if (runPtr->priority < kobj->ownerPtr->priority)
-            {
-                kobj->ownerPtr->priority = runPtr->priority;
-            }
-            /* now ownerPtr runs with higher priority preventing      */
-            /* lower priorites tasks than runPtr to run preempt it    */
-            /* its priority will be restored by a signal              */
-            }
-        K_PEND_CTXTSWTCH
-    }
-    /*the task reaching this point is the sema owner*/
-    /*it passed the wait or was released from the queue */
-    /* via a signal */
-    kobj->ownerPtr=runPtr;
-    K_EXIT_CR
-    return;
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj->value > 0)
+	{
+		kobj->value--;
+		DMB
+	}
+	else
+	{
+#if(K_DEF_SEMA_ENQ==K_DEF_ENQ_FIFO)
+		kTCBQEnq(&kobj->queue, runPtr);
+#else
+		kTCBQEnqByPrio(&kobj->queue, runPtr);
+#endif
+		runPtr->status = BLOCKED;
+		runPtr->pendingSema = kobj;
+		DMB
+		if (kobj->ownerPtr)
+		{
+			if (runPtr->priority < kobj->ownerPtr->priority)
+			{
+				kobj->ownerPtr->priority = runPtr->priority;
+			}
+		}
+		K_PEND_CTXTSWTCH
+		K_EXIT_CR
+		/* waiting task gains access by resuming here */
+		K_ENTER_CR
+		if (kobj->ownerPtr)
+		{
+			/* restore owner priority */
+			kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
+		}
+	}
+	/*the task reaching this point is the sema owner*/
+	kobj->ownerPtr = runPtr;
+	K_EXIT_CR
+	return;
 }
 
-INT32 kSemaQuery(K_SEMA* const kobj)
+VOID kSemaSignal(K_SEMA *const kobj)
 {
-    if (kobj->init == FALSE)
-    {
-        kErrHandler(FAULT_OBJ_NOT_INIT);
-    }
-
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
-    return (kobj->value);
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+		K_EXIT_CR
+	}
+	if (kobj->init == FALSE)
+	{
+		kErrHandler(FAULT_OBJ_NOT_INIT);
+	}
+	K_TCB *nextTCBPtr = NULL;
+	(kobj->value) = (kobj->value) + 1;
+	DMB
+	if ((kobj->value) <= 0)
+	{
+		/* if here, the semaphore has sleeping tasks            */
+		K_ERR err = kTCBQDeq(&(kobj->queue), &nextTCBPtr);
+		assert(!err);
+		assert(nextTCBPtr != NULL);
+		nextTCBPtr->pendingSema = NULL;
+		/* a task will resume on the waiting queue, gaining access*/
+		err = kReadyCtxtSwtch(nextTCBPtr);
+		goto EXIT;
+	}
+	/* if there are no waiters */
+	kobj->ownerPtr = NULL; /* clear owner */
+	EXIT:
+	K_EXIT_CR
+	return;
 }
 
-K_ERR kSemaAttmpt(K_SEMA* const kobj, TICK nAttmpts)
+INT32 kSemaQuery(K_SEMA *const kobj)
 {
-    K_CR_AREA
-    if (kIsISR())
-    {
-        kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-    }
-    if (kobj->init == FALSE)
-    {
-        kErrHandler(FAULT_OBJ_NOT_INIT);
-    }
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
-    K_ENTER_CR
-    if ( (kobj->value - 1) < 0)
-    {
-        runPtr->attmptCntr = nAttmpts;
-        DMB
-        goto TRY;
-    }
-    WAIT:
+	if (kobj->init == FALSE)
+	{
+		kErrHandler(FAULT_OBJ_NOT_INIT);
+	}
 
-    kSemaWait(kobj);
-    K_EXIT_CR
-    return (K_SUCCESS);
-
-    TRY:
-
-    kUnRun_( &sleepingQueue, runPtr, ATTEMPTING);
-    K_EXIT_CR
-    /*wake here*/
-    K_ENTER_CR
-    if ( (kobj->value - 1) < 0)
-    {
-        if (runPtr->attmptCntr > 0)
-            goto TRY;
-
-        K_EXIT_CR
-        return (K_ERR_ATTMPT_TIMEOUT);
-    }
-    goto WAIT;
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
+	return (kobj->value);
 }
 
-VOID kSemaSignal(K_SEMA* const kobj)
+K_ERR kSemaAttmpt(K_SEMA *const kobj, TICK nAttmpts)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-        K_EXIT_CR
-    }
-    if (kobj->init == FALSE)
-    {
-        kErrHandler(FAULT_OBJ_NOT_INIT);
-    }
-    K_TCB* nextTCBPtr = NULL;
-    (kobj->value) = (kobj->value) + 1;
-    kobj->ownerPtr=NULL; /* if a task waited successfuly and signaled */
-    DMB
-    if ( (kobj->value) <= 0)
-    {
-        /* if here, the semaphore has sleeping tasks            */
-        /* runPtr signalled. it might have an inherited prio    */
-        runPtr->priority = runPtr->realPrio;
-        K_ERR err = kTCBQDeq( & (kobj->queue), &nextTCBPtr);
-        assert( !err);
-        assert(nextTCBPtr!=NULL);
-        nextTCBPtr->pendingSema = NULL;
-        /* new owner */
-        kobj->ownerPtr=runPtr;
-        err = kReadyCtxtSwtch(nextTCBPtr);
-    }
-    K_EXIT_CR
-    return;
+	K_CR_AREA
+	if (kIsISR())
+	{
+		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+	}
+	if (kobj->init == FALSE)
+	{
+		kErrHandler(FAULT_OBJ_NOT_INIT);
+	}
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
+	K_ENTER_CR
+	if ((kobj->value - 1) < 0)
+	{
+		runPtr->attmptCntr = nAttmpts;
+		DMB
+		goto TRY;
+	}
+	WAIT:
+
+	kSemaWait(kobj);
+	K_EXIT_CR
+	return (K_SUCCESS);
+
+	TRY:
+
+	kUnRun_(&sleepingQueue, runPtr, ATTEMPTING);
+	K_EXIT_CR
+	/*wake here*/
+	K_ENTER_CR
+	if ((kobj->value - 1) < 0)
+	{
+		if (runPtr->attmptCntr > 0)
+			goto TRY;
+
+		K_EXIT_CR
+		return (K_ERR_ATTMPT_TIMEOUT);
+	}
+	goto WAIT;
 }
 #endif /*sema*/
 

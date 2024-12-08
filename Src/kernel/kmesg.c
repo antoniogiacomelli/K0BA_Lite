@@ -31,7 +31,7 @@
  * BLOCKING/SYNCHRONOUS MAILBOX
  *******************************************************************************/
 #if (K_DEF_MBOX==ON)
-K_ERR kMboxInit(K_MBOX *const kobj, BYTE mailSize, ADDR initMailPtr)
+K_ERR kMboxInit(K_MBOX *const kobj, SIZE mailSize, ADDR initMailPtr)
 {
 	K_CR_AREA
 	K_ENTER_CR
@@ -45,53 +45,18 @@ K_ERR kMboxInit(K_MBOX *const kobj, BYTE mailSize, ADDR initMailPtr)
 	kobj->mboxState = (fullFlag) ? (MBOX_FULL) : (MBOX_EMPTY);
 	kobj->senderTID = 0;
 	kobj->init = TRUE;
-	kobj->needAck = 0;
 	if (fullFlag)
 	{
-		assert(initMailPtr!=NULL);
-		assert(mailSize > 0);
 		kobj->mailPtr = initMailPtr;
-		kobj->mailSize = mailSize;
 	}
-	else
-	{
-		UNUSED(mailSize);
-		UNUSED(initMailPtr);
-	}
+	kobj->mailSize = mailSize;
 	kListInit(&kobj->readersMailQueue, "rdMailQ");
 	kListInit(&kobj->writersMailQueue, "wrMailQ");
 	K_EXIT_CR
 	return (err);
 }
 
-static inline VOID kPendAck_(void)
-{
 
-	kUnRun_(&sleepingQueue, runPtr, PENDING_ACK);
-	K_PEND_CTXTSWTCH
-}
-static inline VOID kSignalAck_(PID const taskID)
-{
-
-	PID pid = kGetTaskPID(taskID);
-	if (tcbs[pid].status == PENDING_ACK)
-	{
-		K_TCB *tcbGotPtr = &tcbs[pid];
-		K_ERR err = kTCBQRem(&sleepingQueue, &tcbGotPtr);
-		assert(!err);
-		err = kReadyCtxtSwtch(tcbGotPtr);
-		assert(!err);
-	}
-
-}
-/*                                                           \o/
-*                                                              \     ____
-*                                                 .~~~~.,.   ..>~>~-/__|_\
-*                                ,....,,.   ....´`.´      ´´´       \__|_/
-*                              ,'        `.´
-*                ,.~~~~~~~..'´
-*
-*/
 
 /******************************************************************************
  * mbox contract:
@@ -105,9 +70,9 @@ static inline VOID kSignalAck_(PID const taskID)
  * (6) from (1)-(5), a box cannot have a wrt and rdr ownr at once.
  * (7) when blocking, higher prio wanna-access-task propagates its prio to
  *     the owner.
- * (8) the owner restores its priority when the wanna-access task resumes.
+ * (8) the owner restores its priority when the wanna-access gains access
  ****************************************************************************/
-K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr, BOOL needAck)
+K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr)
 {
 	K_CR_AREA
 	if (kIsISR())
@@ -128,7 +93,11 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr, BOOL needAck)
 	if (kobj->mboxState == MBOX_FULL)
 	{
 		/* not-empty blocks a writer */
+#if(K_DEF_MBOX_ENQ==K_DEF_ENQ_FIFO)
+		kTCBQEnq(&kobj->writersMailQueue, runPtr);
+#else
 		kTCBQEnqByPrio(&kobj->writersMailQueue, runPtr);
+#endif
 		runPtr->status = PENDING_FULL_MBOX;
 		if ((kobj->owner != NULL) && (runPtr->priority < kobj->owner->priority))
 		{
@@ -146,12 +115,8 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr, BOOL needAck)
 	kobj->owner = runPtr;
 	kobj->senderTID = runPtr->uPid;
 	kobj->mailPtr = sendPtr;
-	kobj->needAck = needAck;
 	kobj->mboxState = MBOX_FULL;
-	if (kobj->needAck)
-	{
-		kPendAck_();
-	}
+
 	/*  full: unblock a reader */
 	if (kobj->readersMailQueue.size > 0)
 	{
@@ -164,7 +129,7 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr, BOOL needAck)
 	return (K_SUCCESS);
 }
 
-TID kMboxPend(K_MBOX *const kobj, ADDR *recvPPtr)
+TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
 {
 	K_CR_AREA
 
@@ -204,11 +169,8 @@ TID kMboxPend(K_MBOX *const kobj, ADDR *recvPPtr)
 	}
 	kobj->owner = runPtr;
 	*recvPPtr = kobj->mailPtr;
+	kobj->mailPtr=NULL; /*destroy mesg in mbox*/
 	kobj->mboxState = MBOX_EMPTY;
-	if (kobj->needAck)
-	{
-		kSignalAck_(kobj->senderTID);
-	}
 
 	/* empty: unblock a writer */
 	if (kobj->writersMailQueue.size > 0)
@@ -228,6 +190,12 @@ K_MBOX_STATUS kMboxQuery(K_MBOX *const kobj)
 {
 
 	return (kobj->mboxState);
+}
+
+SIZE kMboxGetSize(K_MBOX *const kobj)
+{
+
+	return (kobj->mailSize);
 }
 
 #endif
@@ -567,12 +535,120 @@ K_ERR kPDQDrop(K_PDQ *kobj, K_PDBUF *bufPtr)
 #endif
 
 /*******************************************************************************
- * INDIRECT BLOCKING MESSAGE QUEUE
+ * PIPES
+ *******************************************************************************/
+#if (K_DEF_PIPE==ON)
+
+K_ERR kPipeInit(K_PIPE *const kobj)
+{
+	if (IS_NULL_PTR(kobj))
+		KFAULT(FAULT_NULL_OBJ);
+	K_CR_AREA
+	K_ENTER_CR
+	K_ERR err = -1;
+	kobj->head = 0;
+	kobj->tail = 0;
+	kobj->data = 0;
+	kobj->room = K_DEF_PIPE_SIZE;
+	if (err < 0)
+		return (err);
+	err = EVNTINIT(&(kobj->evData));
+	if (err < 0)
+		return (err);
+	err = EVNTINIT(&(kobj->evRoom));
+	if (err < 0)
+		return (err);
+	K_EXIT_CR
+	return (K_SUCCESS);
+}
+
+INT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
+{
+
+	K_CR_AREA
+	K_ENTER_CR
+	if (IS_NULL_PTR(kobj))
+		KFAULT(FAULT_NULL_OBJ);
+	UINT32 readBytes = 0;
+	if (nBytes == 0)
+		return (0);
+	if (kobj->tail == kobj->head)
+	{
+		SLPEVNT(&(kobj->evData)); /* wait for data from writers */
+		K_EXIT_CR
+
+		K_ENTER_CR
+	}
+	while (kobj->data)
+	{
+
+		*destPtr = kobj->buffer[kobj->tail]; /* read from the tail  */
+		destPtr++;
+		kobj->tail += 1;
+		kobj->tail %= K_DEF_PIPE_SIZE; /* wrap around */
+		kobj->data -= 1; /* decrease data       */
+		readBytes += 1; /* increase read bytes */
+		kobj->room += 1;
+	}
+	if (readBytes)
+	{
+		WKEVNT(&(kobj->evRoom));
+		K_EXIT_CR
+		DMB
+		return (readBytes); /* return number of read bytes    */
+	}
+	else
+	{
+		K_EXIT_CR
+		return (0);
+	}
+}
+
+INT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
+{
+	K_CR_AREA
+	K_ENTER_CR
+	if (IS_NULL_PTR(kobj))
+		KFAULT(FAULT_NULL_OBJ);
+	UINT32 writeBytes = 0;
+	if (nBytes == 0)
+		return (0);
+	if (nBytes <= 0)
+		return (0);
+	if (kobj->head != kobj->tail)
+	{
+		SLPEVNT(&(kobj->evRoom));
+		K_EXIT_CR
+		K_ENTER_CR
+	}
+	while (kobj->room)
+	{
+		kobj->buffer[kobj->head] = *srcPtr;
+		kobj->head += 1;
+		kobj->head %= K_DEF_PIPE_SIZE;
+		kobj->data++;
+		kobj->room -= 1;
+		srcPtr++;
+		writeBytes++;
+		if (writeBytes >= nBytes)
+		{
+			break;
+		}
+	}
+	WKEVNT(&(kobj->evData));
+	K_EXIT_CR
+	DMB
+	return (writeBytes);
+}
+#endif /*K_DEF_PIPES*/
+
+/*******************************************************************************
+ * INDIRECT BLOCKING MESSAGE QUEUE (DEPRECATED)
  *******************************************************************************/
 
 #if(K_DEF_MESGQ==ON)
 
-/*SysMesg Pool*/
+/*SysMesg Poolf*/
 
 static MESG sysmesgPool[K_DEF_N_MESG]; /* reserved memory  */
 static QUEUE sysmesgQueue; /* the double-list as a queue */
@@ -957,114 +1033,3 @@ K_ERR kMesgQRecvPtr(K_MESGQ *const kobj, ADDR *recvMesgPPtr, TID *senderTIDPtr)
 }
 
 #endif /*K_DEF_MESGQ*/
-
-/*******************************************************************************
- * PIPES
- *******************************************************************************/
-#if (K_DEF_PIPE==ON)
-
-K_ERR kPipeInit(K_PIPE *const kobj)
-{
-	if (IS_NULL_PTR(kobj))
-		KFAULT(FAULT_NULL_OBJ);
-	K_CR_AREA
-	K_ENTER_CR
-	K_ERR err = -1;
-	kobj->head = 0;
-	kobj->tail = 0;
-	kobj->data = 0;
-	kobj->room = K_DEF_PIPE_SIZE;
-	if (err < 0)
-		return (err);
-	err = EVNTINIT(&(kobj->evData));
-	if (err < 0)
-		return (err);
-	err = EVNTINIT(&(kobj->evRoom));
-	if (err < 0)
-		return (err);
-	K_EXIT_CR
-	return (K_SUCCESS);
-}
-
-INT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
-{
-
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-		KFAULT(FAULT_NULL_OBJ);
-	UINT32 readBytes = 0;
-	if (nBytes == 0)
-		return (0);
-	if (kobj->tail == kobj->head)
-	{
-		SLPEVNT(&(kobj->evData)); /* wait for data from writers */
-		K_EXIT_CR
-
-		K_ENTER_CR
-	}
-	while (kobj->data)
-	{
-
-		*destPtr = kobj->buffer[kobj->tail]; /* read from the tail  */
-		destPtr++;
-		kobj->tail += 1;
-		kobj->tail %= K_DEF_PIPE_SIZE; /* wrap around */
-		kobj->data -= 1; /* decrease data       */
-		readBytes += 1; /* increase read bytes */
-		kobj->room += 1;
-	}
-	if (readBytes)
-	{
-		WKEVNT(&(kobj->evRoom));
-		K_EXIT_CR
-		DMB
-		return (readBytes); /* return number of read bytes    */
-	}
-	else
-	{
-		K_EXIT_CR
-		return (0);
-	}
-}
-
-INT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
-{
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-		KFAULT(FAULT_NULL_OBJ);
-	UINT32 writeBytes = 0;
-	if (nBytes == 0)
-		return (0);
-	if (nBytes <= 0)
-		return (0);
-	if (kobj->head != kobj->tail)
-	{
-		SLPEVNT(&(kobj->evRoom));
-		K_EXIT_CR
-		K_ENTER_CR
-	}
-	while (kobj->room)
-	{
-		kobj->buffer[kobj->head] = *srcPtr;
-		kobj->head += 1;
-		kobj->head %= K_DEF_PIPE_SIZE;
-		kobj->data++;
-		kobj->room -= 1;
-		srcPtr++;
-		writeBytes++;
-		if (writeBytes >= nBytes)
-		{
-			break;
-		}
-	}
-	WKEVNT(&(kobj->evData));
-	K_EXIT_CR
-	DMB
-	return (writeBytes);
-}
-#endif /*K_DEF_PIPES*/
-
-
-/*************/

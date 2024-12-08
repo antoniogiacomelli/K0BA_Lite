@@ -68,7 +68,7 @@ static inline K_ERR kEventInit(K_EVENT* const kobj)
     kobj->eventID = (UINT32) kobj;
     assert( !kTCBQInit( & (kobj->queue), "eventQ"));
     kobj->init = TRUE;
-    return K_SUCCESS;
+    return (K_SUCCESS);
 }
 
 VOID kEventSleep(K_EVENT* const);
@@ -77,12 +77,26 @@ VOID kEventWake(K_EVENT* const);
 #endif
 
 /*
- *          ~~~~~
+
+                \o_´
+ 	   ____  ´  (
+	  /_|__\...(.\...~~~~´´´´´....                   ,.~~~~~~~..'´
+	  \_|__/                       ´´.__ ,.~~~~~~~..'´
+
+
  	   ____
-	  /_|__\.´´<´´<...~~~~´´´´´....                   ,.~~~~~~~..'´
+	  /_|__\.´´(´(...~~~~´´´´´....                   ,.~~~~~~~..'´
 	  \_|__/     \                 ´´.__ ,.~~~~~~~..'´
-                 /o>
-         ~~~~
+	          `  o  ´
+             `  // ´
+             `
+               ´
+ 	   ____
+	  /_|__\.´´(´(...~~~~´´´´´....                   ,.~~~~~~~..'´
+	  \_|__/    o                 ´´.__ ,.~~~~~~~..'´
+	         `  / `
+               ((
+             ` `   `
 
 */
 static inline K_ERR kUnRun_(K_TCBQ* queuePtr, K_TCB* tcbPtr,
