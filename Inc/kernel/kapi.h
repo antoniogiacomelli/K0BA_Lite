@@ -69,8 +69,7 @@
  *
  * \param timeSlice    UNSIGNED integer for time-slice.
  * 					   If time-slice is ON, value 0 is invalid.
- *					   If OFF, value is ignored, but API does not change
- *					   (as guidelined in the book 'Polemical Code')
+ *
  *
  * \param priority     Task priority - valid range: 0-31.
  *
@@ -192,10 +191,12 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 /**
  * \brief  Initialise an indirect blocking message queue.
- *         You can choose to leave the memory allocation/deallocation to the
- *         kernel, in which case there will be copying or you do it yourself
- *         to send and receive messsage addresses you are responsible for
- *         managing scope and allocation/deallocation.
+ *         These queues use a central pool of system messages that wrap the
+ *         message contents within sender id, size and address.
+ *         Depending on how you choose to  receive it copies the message to an
+ *         address passed by the receiver or pass the address of the message.
+ *         If receiving an address, you need to free it yourself after
+ *         consuming the message.
  *
  * \param kobj          Pointer to the message queue kernel object.
  * \param mesgPoolPtr   Address of the allocated memory for the message
@@ -235,23 +236,15 @@ K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR recvMesgPtr, TID* senderTIDPtr);
 
 /**
- * \brief                 Receive a pointer to a message.
- * \param kobj            Message Queue address
- * \return                Address to a K_MESG object. Within this object you find the message address
- * 						  and other meta-data. Use kMesgGetPtr() and kMesgGetSenderId() to extract
- * 						  information.
- */
-K_MESG* kMesgQRecvPtr(K_MESGQ* const kobj);
-
-/**
- * \brief                 Send a message address, no copy.
- *
- * \param kobj            Message queue address.
- * \param mesgPtr         Message Pointer
- * \param mesgSize        Message size.
+ * \brief                 Receive a pointer to a message from a queue.
+ * \param kobj            Message Queue address.
+ * \param recvMesgPPtr    Pointer-to-a-pointer to store the message address.
+ * \param senderTIDPtr    Pointer to the variable to store the sender task id.
  * \return                See ktypes.h
  */
-K_ERR kMesgQSendPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
+
+K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
+
 
 /**
  * \brief				 Enqueue a message on the queue head.
@@ -260,17 +253,6 @@ K_ERR kMesgQSendPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize
  * \param mesgSize		 Message Size
  * \return				 See ktypes.h
  */
-K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
-
-
-/**
- * \brief				Send a message address to the queue head.
- * \param kobj			Message Queue address
- * \param mesgPtr		Message address
- * \param mesgSize		Message Size
- * \return				See ktypes.h
- */
-K_ERR kMesgQJamPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
 #endif /*K_DEF_MESGQ*/
 
