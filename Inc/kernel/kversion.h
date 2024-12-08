@@ -21,8 +21,8 @@ extern struct kversion const KVERSION;
 
 #if (K_DEF_MINIMAL_VER==0U) /* there is no retrocompatible version */
                             /* the valid is the current            */
-#define K_VALID_VERSION (KVERSION.major << 16 | KVERSION.minor << 8 \
-            | KVERSION.patch << 0)
+#define K_VALID_VERSION (unsigned)((KVERSION.major << 16 | KVERSION.minor << 8 \
+            | KVERSION.patch << 0))
 
 #else
 

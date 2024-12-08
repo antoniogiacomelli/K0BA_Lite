@@ -192,12 +192,16 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 /**
  * \brief  Initialise an indirect blocking message queue.
-
+ *         You can choose to leave the memory allocation/deallocation to the
+ *         kernel, in which case there will be copying or you do it yourself
+ *         to send and receive messsage addresses you are responsible for
+ *         managing scope and allocation/deallocation.
  *
  * \param kobj          Pointer to the message queue kernel object.
  * \param mesgPoolPtr   Address of the allocated memory for the message
  *                      contents.
- *                    
+ *                      Pass NULL, if wishing to send/recv pointers you will
+ *                      allocate and free.
  *                      Recommend declare it as a BYTE array of queueSize x
  *                      mesgSize bytes: BYTE mesgPoolFoo[QUEUE_SIZE][ITEM_SIZE]
  * \param queueSize     Number of items the queue support before blocking full.
@@ -230,16 +234,43 @@ K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
  */
 K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR recvMesgPtr, TID* senderTIDPtr);
 
- /* 
- * \brief            Send a message to the queue head (jam).
- * \param kobj       Address of the queue kernel object.
- * \param mesgPtr    Address of the message to be sent. Beware the scope.
- * \param mesgSize   Size of the message - non-zero, up to the value you decla
- *                   red.
- *\return           See ktypes.h
+/**
+ * \brief                 Receive a pointer to a message.
+ * \param kobj            Message Queue address
+ * \return                Address to a K_MESG object. Within this object you find the message address
+ * 						  and other meta-data. Use kMesgGetPtr() and kMesgGetSenderId() to extract
+ * 						  information.
+ */
+K_MESG* kMesgQRecvPtr(K_MESGQ* const kobj);
+
+/**
+ * \brief                 Send a message address, no copy.
+ *
+ * \param kobj            Message queue address.
+ * \param mesgPtr         Message Pointer
+ * \param mesgSize        Message size.
+ * \return                See ktypes.h
+ */
+K_ERR kMesgQSendPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
+
+/**
+ * \brief				 Enqueue a message on the queue head.
+ * \param kobj			 Message queue addresss
+ * \param mesgPtr		 Message pointer
+ * \param mesgSize		 Message Size
+ * \return				 See ktypes.h
  */
 K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
+
+/**
+ * \brief				Send a message address to the queue head.
+ * \param kobj			Message Queue address
+ * \param mesgPtr		Message address
+ * \param mesgSize		Message Size
+ * \return				See ktypes.h
+ */
+K_ERR kMesgQJamPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
 #endif /*K_DEF_MESGQ*/
 
@@ -279,10 +310,16 @@ K_ERR kMboxPost(K_MBOX* const kobj, ADDR const sendPtr);
 TID kMboxPend(K_MBOX* const kobj, ADDR* recvPtr);
 
 /**
- * \brief        Return status of a mailbox: full, empty.
+ * \brief       		Return status of a mailbox: full, empty.
  *
  */
 K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
+
+/**
+ * \brief 				Return the size set for a message within a mailbox, if any.
+ */
+SIZE kMboxGetSize(K_MBOX *const kobj);
+
 #endif
 
 #if (K_DEF_AMBOX==ON)
@@ -437,7 +474,7 @@ K_ERR kPipeInit(K_PIPE* const kobj);
  *\param nBytes Number of bytes to be read
  *\retval Number of read bytes if success. -1 if fails.
  */
-INT32 kPipeRead(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
+UINT32 kPipeRead(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
 
 /**
  *\brief Write a stream of bytes to a pipe
@@ -446,7 +483,7 @@ INT32 kPipeRead(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
  *\param nBytes Number of bytes to be write
  *\retval Number of written bytes if success. -1 if fails.
  */
-INT32 kPipeWrite(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
+UINT32 kPipeWrite(K_PIPE* const kobj, BYTE* srcPtr, UINT32 nBytes);
 
 #endif /*K_DEF_PIPES*/
 

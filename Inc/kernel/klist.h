@@ -160,14 +160,14 @@ __attribute__((always_inline))    static inline K_ERR kListRemoveHead(
 __attribute__((always_inline))    static inline K_ERR kListAddTail(
         K_LIST* const kobj, K_LISTNODE* const newNodePtr)
 {
-    return kListInsertAfter(kobj, kobj->listDummy.prevPtr, newNodePtr);
+    return (kListInsertAfter(kobj, kobj->listDummy.prevPtr, newNodePtr));
 }
 
 __attribute__((always_inline))    static inline K_ERR kListAddHead(
         K_LIST* const kobj, K_LISTNODE* const newNodePtr)
 {
 
-    return kListInsertAfter(kobj, &kobj->listDummy, newNodePtr);
+    return (kListInsertAfter(kobj, &kobj->listDummy, newNodePtr));
 }
 
 __attribute__((always_inline))

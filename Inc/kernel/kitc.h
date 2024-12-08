@@ -76,8 +76,8 @@ VOID kEventWake(K_EVENT* const);
 
 #endif
 
-/*
 
+/*
                 \o_´
  	   ____  ´  (
 	  /_|__\...(.\...~~~~´´´´´....                   ,.~~~~~~~..'´
@@ -96,9 +96,8 @@ VOID kEventWake(K_EVENT* const);
 	  \_|__/    o                 ´´.__ ,.~~~~~~~..'´
 	         `  / `
                ((
-             ` `   `
+             ` `   `*/
 
-*/
 static inline K_ERR kUnRun_(K_TCBQ* queuePtr, K_TCB* tcbPtr,
         K_TASK_STATUS status)
 {
@@ -118,7 +117,19 @@ static inline K_ERR kUnRun_(K_TCBQ* queuePtr, K_TCB* tcbPtr,
     }
     return (K_ERR_TASK_NOT_RUNNING);
 }
+#if (K_DEF_PIPE==ON)
+K_ERR kPipeInit(K_PIPE* const );
+UINT32 kPipeRead(K_PIPE* const , BYTE* , UINT32 );
+UINT32 kPipeWrite(K_PIPE* const , BYTE* , UINT32 );
 
+#endif /*K_DEF_PIPES*/
+#if (K_DEF_MBOX == ON)
+K_ERR kMboxInit(K_MBOX* const, SIZE, ADDR);
+K_ERR kMboxPost(K_MBOX* const, ADDR const);
+TID kMboxPend(K_MBOX* const, ADDR*);
+K_MBOX_STATUS kMboxQuery(K_MBOX* const);
+SIZE kMboxGetSize(K_MBOX* const);
+#endif
 #ifdef __cplusplus
 }
 #endif

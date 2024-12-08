@@ -1,14 +1,12 @@
-/**
- *****************************************************************************
+/****************************************************************************
  *
  * [K0BA - Kernel 0 For Embedded Applications] | [VERSION: 0.3.0]
  *
- ******************************************************************************
- *\file kobjs.h
- *\brief    Kernel objects
- *\version  0.3.0
- *\author   Antonio Giacomelli
- *****************************************************************************/
+ *******************************************************************************
+ * 	In this header:
+ * 					o Kernel objects definition
+ *
+ ******************************************************************************/
 #ifndef KOBJS_H
 #define KOBJS_H
 
@@ -17,18 +15,13 @@ extern "C" {
 #endif
 
 #include "ktypes.h"
-/**
- *\brief Node structure for general circular doubly linked list
- */
+
 struct kListNode
 {
 	struct kListNode* nextPtr; /* Pointer to next node */
 	struct kListNode* prevPtr; /* Pointer to previous node */
 };
 
-/**
- *\brief  Circular doubly linked list structure
- */
 struct kList
 {
 	struct kListNode listDummy; /* Dummy node for head/tail management */
@@ -37,11 +30,7 @@ struct kList
 	BOOL init;
 };
 
-/******************************************************************************/
 
-/**
- * \brief Task Control Block
- */
 struct kTcb
 {
 	UINT32* sp;           /* Saved stack pointer */
@@ -61,8 +50,6 @@ struct kTcb
     BOOL runToCompl;      /* Cooperative-only task     */
 	TICK busyWaitTime;    /* Busy-Delay in ticks 			   */
     TICK   attmptCntr;      /* Trying to access CR */
-
-/*--------------------------------------------------------*/
 #if (K_DEF_SEMA == ON)
     K_SEMA* pendingSema;  /* Pending sema    */
 #endif
@@ -72,34 +59,26 @@ struct kTcb
 #if (K_DEF_SLEEPWAKE==ON)
 	K_EVENT* pendingEv;   /* Pending event */
 #endif
+#if (K_DEF_MBOX==ON)
 	K_MBOX* pendingMbox;   /* Pending mbox */
+#endif
 	K_TIMER* pendingTmr;  /* Pending timer */
 	UINT32 lostSignals;   /* Number of lost direct signals */
 	UINT32 nPreempted;    /* Preemption count  */
 	PID    preemptedBy;   /* PID that preempted */
-    UINT32  nPrioBoost;   /* n of prio inhert   */
-/*---------------------------------------------------------*/
-
     struct kListNode tcbNode; /* Aggregated list node 	   */
 } __attribute__((aligned));
 
-/******************************************************************************/
 
-/**
- *\brief Record of ticks
- */
 struct kRunTime
 {
 	TICK globalTick; /* Global system tick */
 	UINT32 nWraps; /* Number of tick wraps */
 };
 
-/*****************************************************************************/
 
 #if (K_DEF_SEMA==ON)
-/**
- *\brief  Counter Semaphore
- */
+
 struct kSema
 {
 	INT32 value; /* Semaphore value */
@@ -109,12 +88,8 @@ struct kSema
 };
 #endif
 
-/*****************************************************************************/
-
-/**
- *\brief Mutex
- */
 #if (K_DEF_MUTEX == ON)
+
 struct kMutex
 {
 	struct kList queue; /* Mutex waiting queue */
@@ -124,19 +99,17 @@ struct kMutex
 };
 #endif
 
-/*****************************************************************************/
-
 #if (K_DEF_SLEEPWAKE==ON)
-/**
- *\brief Generic Event
- */
+
 struct kEvent
 {
 	struct kList queue; /* Waiting queue */
 	BOOL init; /* Init flag */
 	UINT32 eventID; /* event ID */
 };
+
 #if (K_DEF_PIPE == ON) /* still within kdefsleepwake*/
+
 struct kPipe
 {
     UINT32 tail; /* read index */
@@ -149,14 +122,12 @@ struct kPipe
     BOOL init;
 };
 #endif /* K_DEF_PIPES */
+
 #endif /* K_DEF_SLEEPWAKE */
 
-/******************************************************************************/
-
 #define MEMBLKLAST (1)
-/**
- *\brief Fixed-size pool memory control block (BLOCK POOL)
- */
+
+/* Fixed-size pool memory control block (BLOCK POOL) */
 struct kMemBlock
 {
 	BYTE* freeListPtr; /* Pointer to the head of the free list*/
@@ -169,25 +140,14 @@ struct kMemBlock
 #endif
 	BOOL init;
 };
-/******************************************************************************/
 
-#if (K_DEF_MUTEX==ON)
-/* RIP */
-#define      MBOX_LOCK      (0)
-#define      AMBOX_LOCK     (0)
-#define      MESGQ_LOCK     (0)
-#endif
-
-/******************************************************************************/
 
 #if (K_DEF_MBOX==ON)
-/**
- * \brief Indirect Blocking or Fully Synchronous Mailbox
- */
+
+/* Indirect Blocking or Fully Synchronous Mailbox */
 struct kMailbox
 {
-    /*[CONFIG]*/
-    BOOL init; /* Init 			  */
+     BOOL init;
     /*[CONTROL]*/
     K_MBOX_STATUS mboxState;
     K_TCB* owner;
@@ -195,37 +155,26 @@ struct kMailbox
     struct kList readersMailQueue;
     /*EXCHANGE*/
     TID senderTID;
-    BYTE   mailSize;
+    SIZE   mailSize;
     ADDR   mailPtr;
-    BOOL   needAck;
 } __attribute__((aligned(4)));
 #endif
 
-/******************************************************************************/
 
 #if (K_DEF_AMBOX==ON)
-/**
- * \brief Indirect Asynchronous Mailbox
- */
+
 struct kAsynchMbox
 {
-    /*[CONFIG]*/
-    BOOL init; /* Init */
-    /*EXCHANGE*/
+    BOOL init;
     BYTE aMailSize;
     ADDR aMailPtr;
-
 } __attribute__((aligned(4)));
 
 #endif
 
-/******************************************************************************/
 
 #if ((K_DEF_MESGQ==ON))
 
-/**
- *\brief Message Record
- */
 struct kMesg
 {
     TID senderTid; /* Sender Task ID*/
@@ -235,9 +184,6 @@ struct kMesg
 } __attribute__((aligned));
 
 
-/**
- *\brief Indirect Message Queue
- */
 struct kMesgQ
 {
 	struct kSema semaItem; /* Semaphore indicating a new message */
@@ -253,8 +199,9 @@ struct kMesgQ
 
 #endif /*K_DEF_MSG_QUEUE*/
 
-/******************************************************************************/
+
 #if (K_DEF_PDQ== ON)
+
 struct kPumpDropBuf
 {
 
@@ -269,11 +216,9 @@ struct kPumpDropQueue
     UINT32 failReserve;
     BOOL                    init;
 };
+
 #endif
-/*****************************************************************************/
-/**
- *\brief Application Timer
- */
+
 struct kTimer
 {
 	STRING timerName; /* Timer name */
@@ -287,7 +232,6 @@ struct kTimer
 	BOOL init;
 } __attribute__((aligned));
 
-/*****************************************************************************/
 
 
 /*[EOF]*/

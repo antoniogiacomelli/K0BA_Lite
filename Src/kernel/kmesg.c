@@ -411,7 +411,7 @@ K_ERR kPDQInit(K_PDQ *const kobj, K_PDBUF *bufPool, BYTE nBufs)
 		kobj->init = TRUE;
 	}
 	K_EXIT_CR
-	return err;
+	return (err);
 }
 
 K_PDBUF* kPDQReserve(K_PDQ *const kobj)
@@ -562,7 +562,7 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 	return (K_SUCCESS);
 }
 
-INT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
+UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
 {
 
 	K_CR_AREA
@@ -604,7 +604,7 @@ INT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
 	}
 }
 
-INT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
+UINT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
 {
 	K_CR_AREA
 	K_ENTER_CR
@@ -643,7 +643,7 @@ INT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
 #endif /*K_DEF_PIPES*/
 
 /*******************************************************************************
- * INDIRECT BLOCKING MESSAGE QUEUE (incomplete)
+ * INDIRECT BLOCKING MESSAGE QUEUE (DEPRECATED)
  *******************************************************************************/
 
 #if(K_DEF_MESGQ==ON)
@@ -711,7 +711,7 @@ static inline K_ERR kMesgPut_(K_MESG *const kMesgPtr)
 TID kMesgGetSenderID(K_MESG *const kMesgPtr)
 {
 	if (kMesgPtr == NULL)
-		return (-1);
+		return (IDLETASK_ID); /*error: idletask is illiterate*/
 	return (kMesgPtr->senderTid);
 }
 
@@ -721,199 +721,282 @@ ADDR kMesgGetPtr(K_MESG *const kMesgPtr)
 		return (NULL);
 	return (kMesgPtr->mesgPtr);
 }
+/*******************************************************************************
+ * INDIRECT BLOCKING MESSAGE QUEUE
+ *******************************************************************************/
+#if(K_DEF_MESGQ==ON)
+/*SysMesg Pool*/
+static MESG sysmesgPool[K_DEF_N_MESG]; /* reserved memory  */
+static QUEUE sysmesgQueue; /* the double-list as a queue */
+static BOOL sysmesgPoolInit = FALSE;
+static UINT32 sysmesgCnt = K_DEF_N_MESG;
+static UINT32 sysmesgReq = 0;
 
-K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR const mesgPoolPtr,
-		BYTE const queueSize, BYTE const mesgSize, BOOL dontCopy)
+static inline VOID kMesgPoolInit_()
+{
+    QUEUEINIT( &sysmesgQueue, "sysmesglist");
+    SIZE idx = 0;
+    for (idx = 0; idx < K_DEF_N_MESG; ++idx)
+        ENQUEUE( &sysmesgQueue, &sysmesgPool[idx].mesgNode);
+}
+
+static inline K_MESG* kMesgGet_(VOID)
+{
+    K_CR_AREA
+    K_ENTER_CR
+    /* dont need a lock */
+    if (sysmesgCnt == 0)
+    {
+        K_EXIT_CR
+        return NULL;
+    }
+    K_LISTNODE* listNodePtr = NULL;
+    K_ERR err = -1;
+    err = DEQUEUE( &sysmesgQueue, &listNodePtr);
+    assert(err==0);
+    K_MESG* kMesgPtr = K_LIST_GET_SYSMESG_NODE(listNodePtr);
+    if (kMesgPtr)
+    {
+        kMesgPtr->mesgNode = *listNodePtr;
+        sysmesgCnt --;
+        K_EXIT_CR
+        return (kMesgPtr);
+    }
+    K_EXIT_CR
+    return (NULL);
+}
+
+static inline K_ERR kMesgPut_(K_MESG* const kMesgPtr)
+{
+    K_CR_AREA
+    K_ENTER_CR
+    K_ERR err = ENQUEUE( &sysmesgQueue, &kMesgPtr->mesgNode);
+    assert(err==0);
+    sysmesgCnt ++;
+    K_EXIT_CR
+    return (K_SUCCESS);
+}
+
+TID kMesgGetSenderID(K_MESG* const kMesgPtr)
+{
+    if (kMesgPtr == NULL)
+        return -1;
+    return kMesgPtr->senderTid;
+}
+
+ADDR kMesgGetPtr(K_MESG* const kMesgPtr)
+{
+    if (kMesgPtr == NULL)
+        return (NULL);
+    return kMesgPtr->mesgPtr;
+}
+
+K_ERR kMesgQInit(K_MESGQ* const kobj, ADDR const mesgPoolPtr,
+        BYTE const queueSize, BYTE const mesgSize)
 {
 
-	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPoolPtr))
-		return (K_ERR_OBJ_NULL);
-	if (queueSize == 0)
-		return (K_ERR_INVALID_Q_SIZE);
-	if (mesgSize == 0)
-		return (K_ERR_INVALID_QMESG_SIZE);
-	if (queueSize > K_DEF_N_MESG)
-		return (K_ERR_INVALID_Q_SIZE);
-
-	sysmesgReq += queueSize;
-	/* when it reaches the number of mesg records available */
-	if (sysmesgReq >= K_DEF_N_MESG)
-	/* disgracefuly fail */
-	{
-		KFAULT(FAULT_SYSMESG_N_EXCEEDED);
-	}
-	K_CR_AREA
-	K_ENTER_CR
-	/* accumulates the queue sizes */
-	if (!sysmesgPoolInit)
-	{
-		kMesgPoolInit_();
-	}
-	K_ERR err = -1;
-	err = SEMINIT(&(kobj->semaItem), 0);
-	if (err < 0)
-	{
-		K_EXIT_CR
-		return (err);
-	}
+    if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPoolPtr))
+        return (K_ERR_OBJ_NULL);
+    if (queueSize == 0)
+        return (K_ERR_INVALID_Q_SIZE);
+    if (mesgSize == 0)
+        return (K_ERR_INVALID_QMESG_SIZE);
+    if (queueSize > K_DEF_N_MESG)
+        return (K_ERR_INVALID_Q_SIZE);
+    K_CR_AREA
+    K_ENTER_CR
+    sysmesgReq += queueSize;
+    if (sysmesgReq >= K_DEF_N_MESG)
+    {
+        KFAULT(FAULT_SYSMESG_N_EXCEEDED);
+    }
+    if ( !sysmesgPoolInit)
+    {
+        kMesgPoolInit_();
+    }
+    K_ERR err = -1;
+    err = SEMINIT( & (kobj->semaItem), 0);
+    assert(err==0);
 #if (K_DEF_MESGQ_BLOCK_FULL==ON)
-	err = SEMINIT(&kobj->semaRoom, queueSize);
-	if (err < 0)
-	{
-		K_EXIT_CR
-		return (err);
-	}
+    err = SEMINIT( &kobj->semaRoom, queueSize);
+    assert(err==0);
 #endif
-
-	err = BLKPOOLINIT(&(kobj->mesgqMcb), (ADDR) mesgPoolPtr, (BYTE) mesgSize,
-			queueSize);
-	if (err < 0)
-	{
-		K_EXIT_CR
-		return (err);
-	}
-	err = QUEUEINIT(&kobj->mesgqList, "qlist");
-	if (err < 0)
-	{
-		K_EXIT_CR
-		return (err);
-	}
-	kobj->itemSize = mesgSize;
-	kobj->init = TRUE;
-	K_EXIT_CR
-	return (K_SUCCESS);
+    err = BLKPOOLINIT( & (kobj->mesgqMcb), (ADDR ) mesgPoolPtr,
+            (BYTE ) mesgSize, queueSize);
+    assert(err==0);
+    err = QUEUEINIT( &kobj->mesgqList, "qlist");
+    assert(err==0);
+    kobj->itemSize = mesgSize;
+    kobj->init = TRUE;
+    K_EXIT_CR
+    return (K_SUCCESS);
 }
 
-K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const mesgPtr, BYTE const mesgSize)
+K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
 {
 
-	K_CR_AREA
-	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPtr))
-		KFAULT(FAULT_NULL_OBJ);
-	if (kobj->init == FALSE)
-		KFAULT(FAULT_OBJ_NOT_INIT);
-	if (kobj->itemSize < mesgSize)
-		return (K_ERR_MESG_SIZE);
+    K_CR_AREA
+    if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPtr))
+        KFAULT(FAULT_NULL_OBJ);
+    if (kobj->init == FALSE)
+        KFAULT(FAULT_OBJ_NOT_INIT);
+    if (kobj->itemSize < mesgSize)
+        return K_ERR_MESG_SIZE;
 #if (K_DEF_MESGQ_BLOCK_FULL==ON)
-	if (kIsISR())
-	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-	}
-	SEMDWN(&kobj->semaRoom);
+    SEMDWN( &kobj->semaRoom);
 #endif
-	K_ENTER_CR
-	K_MESG *kMesgPtr = MESGGET();
+    K_ENTER_CR
+    K_MESG* kMesgPtr = MESGGET();
 
-	if (kMesgPtr == NULL)
-	{
-		KFAULT(FAULT_MEM_ALLOC);
-	}
-	kMesgPtr->mesgPtr = BLKALLOC(&kobj->mesgqMcb);
-	kMesgPtr->senderTid = runPtr->uPid;
-	kMesgPtr->mesgSize = mesgSize;
-	SIZE r;
-	CPY(kMesgPtr->mesgPtr, mesgPtr, mesgSize, r);
-	assert(r > 0);
-	/*add sysmesg on queue list */
-	K_ERR err = ENQUEUE(&kobj->mesgqList, &(kMesgPtr->mesgNode));
-	if (err < 0)
-	{
-		kErrHandler(FAULT_LIST);
-	}
-	SEMUP(&(kobj->semaItem));
-	K_EXIT_CR
-	DMB
-	return (K_SUCCESS);
+    if (kMesgPtr == NULL)
+    {
+        KFAULT(FAULT_MEM_ALLOC);
+    }
+    kMesgPtr->mesgPtr = BLKALLOC( &kobj->mesgqMcb);
+    kMesgPtr->senderTid = runPtr->uPid;
+    kMesgPtr->mesgSize = mesgSize;
+    UINT32 r;
+    CPY(kMesgPtr->mesgPtr, mesgPtr, mesgSize, r);
+    if (r == 0)
+    {
+        KFAULT(FAULT_MEM_CPY);
+        K_EXIT_CR
+        return (K_ERR_MEM_CPY);
+    }
+    /*add sysmesg on queue list */
+    K_ERR err = ENQUEUE( &kobj->mesgqList, & (kMesgPtr->mesgNode));
+    if (err < 0)
+    {
+        kErrHandler(FAULT_LIST);
+    }
+    SEMUP( & (kobj->semaItem));
+    K_EXIT_CR
+    DMB
+    return (K_SUCCESS);
 }
 
-K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR const recvMesgPtr, TID *senderTIDPtr)
+K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR const recvMesgPtr, TID* senderTIDPtr)
 {
 
-	K_CR_AREA
-	if (IS_NULL_PTR(kobj))
-		KFAULT(FAULT_NULL_OBJ);
-	if (kobj->init == FALSE)
-		return (K_ERR_OBJ_NOT_INIT);
-	K_ERR err = K_SUCCESS;
-	if (kIsISR())
-	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-	}
-	SEMDWN(&kobj->semaItem);
-	K_ENTER_CR
-	/* copy data */
-	/* get K_MESG from the queue private list */
-	K_LISTNODE *dequeuedNodePtr = NULL;
-	err = DEQUEUE(&kobj->mesgqList, &dequeuedNodePtr);
-	if (err < 0)
-		KFAULT(FAULT_LIST);
-	K_MESG *kMesgPtr = K_LIST_GET_SYSMESG_NODE(dequeuedNodePtr);
-	if (kMesgPtr == NULL)
-		KFAULT(FAULT_SYS_MESG_GET);
-	UINT32 r = 0;
-	CPY(recvMesgPtr, kMesgPtr->mesgPtr, kMesgPtr->mesgSize, r);
-	if (r == 0)
-		KFAULT(FAULT_QUEUE_MESG_CPY);
-	*senderTIDPtr = kMesgPtr->senderTid;
-	/*return dynamic allocated objs to their pools */
-	err = MESGPUT(kMesgPtr); /* return to the system pool */
-	if (err < 0)
-		KFAULT(FAULT_SYS_MESG_GET);
-	/* return to the queue pool */
-	err = (BLKFREE(&kobj->mesgqMcb, kMesgPtr->mesgPtr));
-	if (err < 0)
-		KFAULT(FAULT_MEM_FREE);
+    K_CR_AREA
+    if (IS_NULL_PTR(kobj))
+        KFAULT(FAULT_NULL_OBJ);
+    if (kobj->init == FALSE)
+        return (K_ERR_OBJ_NOT_INIT);
+    K_ERR err = K_SUCCESS;
+    SEMDWN( &kobj->semaItem);
+    K_ENTER_CR
+    /* copy data */
+    /* get K_MESG from the queue private list */
+    K_LISTNODE* dequeuedNodePtr = NULL;
+    err = DEQUEUE( &kobj->mesgqList, &dequeuedNodePtr);
+    if (err < 0)
+        KFAULT(FAULT_LIST);
+    K_MESG* kMesgPtr = K_LIST_GET_SYSMESG_NODE(dequeuedNodePtr);
+    if (kMesgPtr == NULL)
+        KFAULT(FAULT_SYS_MESG_GET);
+    UINT32 r = 0;
+    CPY(recvMesgPtr, kMesgPtr->mesgPtr, kMesgPtr->mesgSize, r);
+    if (r == 0)
+        KFAULT(FAULT_QUEUE_MESG_CPY);
+    *senderTIDPtr = kMesgPtr->senderTid;
+    /*return dynamic allocated objs to their pools */
+    err = MESGPUT(kMesgPtr); /* return to the system pool */
+    if (err < 0)
+        KFAULT(FAULT_SYS_MESG_GET);
+    /* return to the queue pool */
+    err = (BLKFREE( &kobj->mesgqMcb, kMesgPtr->mesgPtr));
+    if (err < 0)
+        KFAULT(FAULT_MEM_FREE);
 #if (K_DEF_MESGQ_BLOCK_FULL == ON)
-	SEMUP(&kobj->semaRoom);
+    SEMUP( &kobj->semaRoom);
 #endif
-	K_EXIT_CR
-	DMB
-	return (K_SUCCESS);
+    K_EXIT_CR
+    DMB
+    return (K_SUCCESS);
 }
 
-K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const mesgPtr, BYTE const mesgSize)
+K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
 {
 
-	K_CR_AREA
+    K_CR_AREA
 
-	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPtr))
-		KFAULT(FAULT_NULL_OBJ);
-	if (kobj->init == FALSE)
-		return (K_ERR_OBJ_NOT_INIT);
-	if (kobj->itemSize < mesgSize)
-		return (K_ERR_MESG_SIZE);
+    if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPtr))
+        KFAULT(FAULT_NULL_OBJ);
+    if (kobj->init == FALSE)
+        return (K_ERR_OBJ_NOT_INIT);
+    if (kobj->itemSize < mesgSize)
+        return (K_ERR_MESG_SIZE);
 #if (K_DEF_MESGQ_BLOCK_FULL == ON)
-	if (kIsISR())
-	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-	}
-	SEMDWN(&kobj->semaRoom);
+    SEMDWN( &kobj->semaRoom);
 #endif
 
-	K_ENTER_CR
-	K_MESG *kMesgPtr = MESGGET();
-	if (kMesgPtr == NULL)
-	{
-		KFAULT(FAULT_MEM_ALLOC);
-	}
-	kMesgPtr->mesgPtr = BLKALLOC(&kobj->mesgqMcb);
-	kMesgPtr->senderTid = runPtr->uPid;
-	kMesgPtr->mesgSize = mesgSize;
-	UINT32 r;
-	CPY(kMesgPtr->mesgPtr, mesgPtr, mesgSize, r);
-	if (r == 0)
-	{
-		KFAULT(FAULT_MEM_CPY);
-		K_EXIT_CR
-		return (K_ERR_MEM_CPY);
-	}
-	/* add sysmesg on queue list, on the HEAD */
-	K_ERR err = ENQJAM(&kobj->mesgqList, &(kMesgPtr->mesgNode));
-	assert(err == 0);
-	SEMUP(&(kobj->semaItem));
-	K_EXIT_CR
-	return (K_SUCCESS);
+    K_ENTER_CR
+    K_MESG* kMesgPtr = MESGGET();
+    if (kMesgPtr == NULL)
+    {
+        KFAULT(FAULT_MEM_ALLOC);
+    }
+    kMesgPtr->mesgPtr = BLKALLOC( &kobj->mesgqMcb);
+    kMesgPtr->senderTid = runPtr->uPid;
+    kMesgPtr->mesgSize = mesgSize;
+    UINT32 r;
+    CPY(kMesgPtr->mesgPtr, mesgPtr, mesgSize, r);
+    if (r == 0)
+    {
+        KFAULT(FAULT_MEM_CPY);
+        K_EXIT_CR
+        return (K_ERR_MEM_CPY);
+    }
+    /* add sysmesg on queue list, on the HEAD */
+    K_ERR err = ENQJAM( &kobj->mesgqList, & (kMesgPtr->mesgNode));
+    if (err < 0)
+        KFAULT(FAULT_LIST);
+    SEMUP( & (kobj->semaItem));
+    K_EXIT_CR
+    return (K_SUCCESS);
 }
+/* if you receive a pointer you need to free the memory yourself afterwrds */
+K_MESG* kMesgQRecvPtr(K_MESGQ* const kobj, TID* senderTIDPtr)
+{
 
+    K_CR_AREA
+    if (IS_NULL_PTR(kobj))
+        KFAULT(FAULT_NULL_OBJ);
+    if (kobj->init == FALSE)
+        return (K_ERR_OBJ_NOT_INIT);
+    K_ERR err;
+    SEMDWN( &kobj->semaItem);
+    K_ENTER_CR
+    K_LISTNODE* dequeuedNodePtr = NULL;
+    err = DEQUEUE( &kobj->mesgqList, &dequeuedNodePtr);
+    if (err < 0)
+    {
+        KFAULT(FAULT_LIST);
+    }
+    K_MESG* kMesgPtr = K_LIST_GET_SYSMESG_NODE(dequeuedNodePtr);
+    if (kMesgPtr == NULL)
+    {
+        KFAULT(FAULT_LIST);
+    }
+    *senderTIDPtr = kMesgPtr->senderTid;
+    return (kMesgPtr);
 
+}
+/* free the pointer rcvd  using this function */
+K_ERR kMesgQMemFree(K_MESGQ* kobj, K_MESG* const freePtr)
+{
+
+#if (K_DEF_MESGQ_BLOCK_FULL == ON)
+    SEMUP( &kobj->semaRoom);
+#endif
+
+    err = ENQUEUE( &sysmesgQueue, &freePtr->mesgNode);
+    if (err < 0)
+        KFAULT(FAULT_LIST);
+
+	K_ERR err = (BLKFREE( &kobj->mesgqMcb, freePtr));
+    DMB
+    return (err);
+}
 #endif /*K_DEF_MESGQ*/

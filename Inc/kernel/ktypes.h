@@ -113,7 +113,8 @@ typedef enum kErr
     K_ERR_SEM_INVALID_VAL = (int)0xFFFFFFE3, /* Invalid semaphore value */
     K_ERR_QUERY_UNDEFINED = (int)0xFFFFFFE2,  /* Undefined query state for a kobj */
     K_ERR_TASK_NOT_RUNNING = (int)0xFFFFFFE1,
-    K_ERR_INVALID_TSLICE = (int)0xFFFFFFE0
+    K_ERR_INVALID_TSLICE = (int)0xFFFFFFE0,
+	K_ERR_MESGQ_NO_BUFFER = (int)0xFFFFFFD9    /* Trying to send/recv copy from a queue with unknown buffering address */
 
 } K_ERR;
 
@@ -193,7 +194,9 @@ typedef K_LIST K_TCBQ;
     typedef struct kMesgQ K_MESGQ;
 
     #endif /*mesgq*/
-
+#if (K_DEF_DMESG == ON)
+    typedef struct kDmesg K_DMESG;
+#endif
 #endif /*sema */
 
 #if (K_DEF_MBOX == ON)

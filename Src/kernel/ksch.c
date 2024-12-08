@@ -41,9 +41,9 @@ static PRIO const lowestPrio = K_DEF_MIN_PRIO;
 static PRIO nextTaskPrio = 0;
 static PRIO idleTaskPrio = K_DEF_MIN_PRIO + 1;
 volatile struct kRunTime runTime;
-volatile static UINT32 readyQBitMask;
-volatile static UINT32 readyQRightMask;
-volatile static UINT32 version;
+static volatile UINT32 readyQBitMask;
+static volatile  UINT32 readyQRightMask;
+static volatile  UINT32 version;
 
 /* fwded private helpers */
 static inline VOID kReadyRunningTask_(VOID);
@@ -233,8 +233,7 @@ static inline PRIO kCalcNextTaskPrio_()
         return (idleTaskPrio);
     }
     readyQRightMask = readyQBitMask & -readyQBitMask;
-    // [
-    PRIO prio = __getReadyPrio(readyQRightMask);
+    PRIO prio =(PRIO) (__getReadyPrio(readyQRightMask));
 
     return prio;
     // return __builtin_ctz(readyQRightMask);
@@ -326,7 +325,7 @@ K_ERR kTCBQDeq(K_TCBQ* const kobj, K_TCB** const tcbPPtr)
     K_TCB* tcbPtr_ = *tcbPPtr;
     PRIO prio_ = tcbPtr_->priority;
     if ( (kobj == &readyQueue[prio_]) && (kobj->size == 0))
-        readyQBitMask &= ~ (1 << prio_);
+        readyQBitMask &= ~ (1U << prio_);
     return (K_SUCCESS);
 }
 
@@ -341,7 +340,7 @@ K_ERR kTCBQRem(K_TCBQ* const kobj, K_TCB** const tcbPPtr)
     if (err != K_SUCCESS)
     {
         kErrHandler(FAULT_LIST);
-        return err;
+        return (err);
     }
     *tcbPPtr = K_LIST_GET_TCB_NODE(dequeuedNodePtr, K_TCB);
     if ( *tcbPPtr == NULL)
