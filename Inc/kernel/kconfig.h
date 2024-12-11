@@ -105,8 +105,8 @@
 #define K_DEF_MBOX	                  (ON)
 
 /*** Mailbox enqueing discipline  */
-/*** Default: K_DEF_ENQ_PRIO      */
-#define K_DEF_MBOX_ENQ       (K_DEF_ENQ_PRIO)
+/*** Default: K_DEF_ENQ_FIFO      */
+#define K_DEF_MBOX_ENQ       (K_DEF_ENQ_FIFO)
 
 /*** [Indirect Asynch Mailbox] ************************************************/
 

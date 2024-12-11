@@ -150,7 +150,11 @@ TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
 
 	if (kobj->mboxState == MBOX_EMPTY)
 	{
+#if(K_DEF_MBOX_ENQ==K_DEF_ENQ_FIFO)
+		kTCBQEnq(&kobj->readersMailQueue, runPtr);
+#else
 		kTCBQEnqByPrio(&kobj->readersMailQueue, runPtr);
+#endif
 		runPtr->status = PENDING_EMPTY_MBOX;
 		runPtr->pendingMbox = kobj;
 		/* priority inheritance */
@@ -239,7 +243,46 @@ K_ERR kAmboxInit(K_AMBOX *const kobj, ADDR initMailPtr, BYTE initMailSize)
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
-K_ERR kAmboxRecv(K_AMBOX *const kobj, ADDR const recvPtr)
+K_ERR kAmboxRecvCpy(K_AMBOX *const kobj, ADDR const recvPtr)
+{
+	K_CR_AREA
+	K_ENTER_CR
+	if (IS_NULL_PTR(kobj))
+	{
+		KFAULT(FAULT_NULL_OBJ);
+		K_EXIT_CR
+		return (K_ERR_OBJ_NULL);
+	}
+	if (!kobj->init)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
+		K_EXIT_CR
+		return (K_ERR_OBJ_NOT_INIT);
+	}
+	if (kobj->aMailPtr == NULL)
+	{
+		K_EXIT_CR
+		return (K_ERR_AMBOX_EMPTY);
+	}
+	if (kobj->aMailSize == 0)
+	{
+		K_EXIT_CR
+		return (K_ERR_AMBOX_SIZE);
+	}
+	UINT32 r;
+	CPY(recvPtr, kobj->aMailPtr, kobj->aMailSize, r);
+	if (r != 0)
+	{
+		/* destroy data */
+		kobj->aMailPtr = NULL;
+		K_EXIT_CR
+		return (K_SUCCESS);
+	}
+	K_EXIT_CR
+	return (K_ERROR);
+}
+
+K_ERR kAmboxRecv(K_AMBOX *const kobj, ADDR* const recvPtr)
 {
 	K_CR_AREA
 	K_ENTER_CR
@@ -314,7 +357,7 @@ K_ERR kAmboxRecvKeep(K_AMBOX *const kobj, ADDR const recvPtr)
 	return (K_ERR_MESG_CPY);
 }
 
-K_ERR kAmboxSend(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize)
+K_ERR kAmboxSend(K_AMBOX *const kobj, ADDR const sendPtr, SIZE aMailSize)
 {
 	K_CR_AREA
 	K_ENTER_CR
