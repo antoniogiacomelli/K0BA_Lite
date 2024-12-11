@@ -1,7 +1,9 @@
 #include "application.h"
 
 /*******************************************************************************
+ *
  * Application Tasks Stacks
+ *
  *******************************************************************************/
 
 /*
@@ -15,12 +17,15 @@ UINT32 stack3[STACKSIZE];
 /*******************************************************************************
  * Customise your application init
  * Declare/init app objects
- * Declare  kernel objects: mutexes, seamaphores, timers, etc.
+ * Declare  kernel objects: mutexes, semaphores, timers, etc.
  *******************************************************************************/
 
-UINT32 queue[64];
-UINT32 head=0;
-UINT32 tail=0;
+#define QUEUE_SIZE (64)
+
+static UINT32 queue[QUEUE_SIZE];
+static UINT32 head=0;
+static UINT32 tail=0;
+
 K_MBOX mailbox; 
 
 /*** Init kernel objects here */
@@ -29,49 +34,57 @@ VOID kApplicationInit(VOID)
     kMboxInit( &mailbox, 0, NULL);
 }
 
+static VOID send(UINT32* mesg)
+{
+	queue[head]=*mesg;
+	kMboxPost(&mailbox, &queue[head]);
+	head+=1U;
+	head %= QUEUE_SIZE;
+}
+
+static VOID recv(UINT32** recvpptr)
+{
+	UINT32* tailptr = 	&queue[tail];
+	kMboxPend(&mailbox, (ADDR*)&tailptr);
+	*recvpptr = tailptr;
+	tail+=1U;
+	tail %= QUEUE_SIZE;
+
+}
+
 VOID Task1(VOID)
 {
+	UINT32 sendmesg=0;
     while (1)
     {
-        queue[head]=head*2;
-        kMboxPost( &mailbox, &queue[head], K_NACK);
-
-        head++;
-        head %= 64;
-        kSleep(1);
+    	send(&sendmesg);
+    	sendmesg++;
+    	kSleep(1);
     }
 }
 
 VOID Task2(VOID)
 {
-    UINT32* recvPtr=&queue[tail];
+
 
     while (1)
     {
 
-        kMboxPend( &mailbox, (ADDR)&recvPtr);
-        UINT32 recv=*recvPtr;
-        UNUSED(recv);
-        tail+=1;
-        tail%=64;
         kSleep(1);
 
     }
 }
 
+
 VOID Task3(VOID)
 {
-    UINT32* recvPtr=&queue[tail];
+	UINT32* recvptr;
 
     while (1)
     {
-
-        kMboxPend( &mailbox, (ADDR)&recvPtr);
-        UINT32 recv=*recvPtr;
-        UNUSED(recv);
-        tail+=1;
-        tail%=64;
-        kSleep(1);
+    	recv(&recvptr);
+    	(VOID)recvptr;
+    	kSleep(1);
     }
 }
 
