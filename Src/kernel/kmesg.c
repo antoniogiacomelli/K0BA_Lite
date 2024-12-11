@@ -122,8 +122,8 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr)
 	{
 		K_TCB *freeReadPtr;
 		kTCBQDeq(&kobj->readersMailQueue, &freeReadPtr);
-		kTCBQEnq(&readyQueue[freeReadPtr->priority], freeReadPtr);
-		freeReadPtr->status = READY;
+		K_ERR err = kReadyCtxtSwtch(freeReadPtr);
+		assert(err==0);
 	}
 	K_EXIT_CR
 	return (K_SUCCESS);
@@ -177,8 +177,8 @@ TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
 	{
 		K_TCB *freeWriterPtr;
 		kTCBQDeq(&kobj->writersMailQueue, &freeWriterPtr);
-		kTCBQEnq(&readyQueue[freeWriterPtr->priority], freeWriterPtr);
-		freeWriterPtr->status = READY;
+		K_ERR err = kReadyCtxtSwtch(freeWriterPtr);
+		assert(err==0);
 	}
 
 	K_EXIT_CR
