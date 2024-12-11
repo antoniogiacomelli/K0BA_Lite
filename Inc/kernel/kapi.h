@@ -323,15 +323,17 @@ K_ERR kAmboxRecv(K_AMBOX* const kobj, ADDR const recvPtr);
  *                      been received or if the mailbox was empty.
  */
 K_ERR kAmboxRecvKeep(K_AMBOX* const kobj, ADDR const recvPtr);
+
 /**
- * \brief               Send to an asynchronous mailbox, overwriting the current
- *                      message if it is full.
- *
- * \param kobj          Asynch mailbox address.
- * \param recvPtr       Address of the message.
- * \return              See ktypes.h
+ * \brief				Send to an asynchronous mailbox, overwriting the
+ * 						current message.
+ * \param kobj		    Asynch mailbox address.
+ * \param sendPtr       Message address.
+ * \param nMailSize     Message size.
+ * \return				K_SUCCESS or an error in case sendPtr is NULL or
+ * 						aMailSize is 0.
  */
-K_ERR kAmboxSendOvrw(K_AMBOX* const kobj, ADDR const recvPtr);
+K_ERR kAmboxSendOvw(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize);
 
 #endif
 
