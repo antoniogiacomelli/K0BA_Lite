@@ -1,8 +1,11 @@
 # K0BA Lite 
 
 **K0BA** (_Kernel 0 For emBedded Applications_) is a deterministic Real-Time Kernel aiming constrained MCU-based solutions. 
-This is a lightweight version with no memory isolation. Currently it supports ARMv7M architecture.
-A version with memory isolation will be released soon.
+
+See the docbook:
+
+https://antoniogiacomelli.github.io/K0BA_Lite/
+
 
 > [!NOTE]
 > This is a work in progress. 
