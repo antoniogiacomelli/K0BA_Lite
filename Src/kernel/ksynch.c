@@ -179,7 +179,7 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 	{
 		kErrHandler(FAULT_NULL_OBJ);
 		K_EXIT_CR
-		return K_ERR_OBJ_NULL;
+		return (K_ERR_OBJ_NULL);
 	}
 	if (value < 0)
 		kErrHandler(FAULT);
@@ -194,7 +194,7 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 	;
 	kobj->ownerPtr = NULL;
 	K_EXIT_CR
-	return K_SUCCESS;
+	return (K_SUCCESS);
 }
 
 VOID kSemaWait(K_SEMA *const kobj)
@@ -215,12 +215,10 @@ VOID kSemaWait(K_SEMA *const kobj)
 
 	K_CR_AREA
 	K_ENTER_CR
-	if (kobj->value > 0)
-	{
-		kobj->value--;
-		DMB
-	}
-	else
+	kobj->value--;
+	DMB
+
+	if(kobj->value < 0)
 	{
 #if(K_DEF_SEMA_ENQ==K_DEF_ENQ_FIFO)
 		kTCBQEnq(&kobj->queue, runPtr);
@@ -241,12 +239,13 @@ VOID kSemaWait(K_SEMA *const kobj)
 		K_EXIT_CR
 		/* waiting task gains access by resuming here */
 		K_ENTER_CR
-		if (kobj->ownerPtr)
-		{
-			/* restore owner priority */
-			kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
-		}
+
 	}
+	if (kobj->ownerPtr)
+			{
+				/* restore owner priority */
+				kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
+			}
 	/*the task reaching this point is the sema owner*/
 	kobj->ownerPtr = runPtr;
 	K_EXIT_CR
