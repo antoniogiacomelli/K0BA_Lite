@@ -141,9 +141,14 @@ static K_TIMER timReloadCpy = {0};
 BOOL kTimerHandler(void)
 {
 	BOOL ret=FALSE;
-	if (dTimOneShotList->dTicks > 0) dTimOneShotList->dTicks --;
-	if (dTimReloadList->dTicks > 0) dTimReloadList->dTicks --;
-
+	if (dTimOneShotList)
+	{
+		if (dTimOneShotList->dTicks > 0) dTimOneShotList->dTicks --;
+	}
+	if (dTimReloadList)
+	{
+		if (dTimReloadList->dTicks > 0) dTimReloadList->dTicks --;
+	}
 	while (dTimOneShotList != NULL && dTimOneShotList->dTicks == 0)
 	{
 		ret=TRUE;
