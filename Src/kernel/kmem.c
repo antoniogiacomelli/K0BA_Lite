@@ -65,6 +65,7 @@ K_ERR kMemInit(K_MEM* const kobj, ADDR const memPoolPtr,
 #if(MEMBLKLAST)
     kobj->lastUsed = NULL;
 #endif
+    kobj->init = TRUE;
     K_EXIT_CR
     return (K_SUCCESS);
 }
