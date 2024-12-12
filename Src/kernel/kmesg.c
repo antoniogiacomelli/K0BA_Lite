@@ -439,7 +439,11 @@ K_ERR kAmboxSendOvw(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize)
 /* u best use d'allocator     */
 /* my homie b4da55            */
 /* here no heap will trip     */
-/* we dont frag an address    */
+/* we no fragment no address  */
+/* after a reader is satisfied*/
+/* it needa to drop it,       */
+/* user count decreases	      */
+/* fresh data in your a$$     */
 
 K_ERR kPDQInit(K_PDQ *const kobj, K_PDBUF *bufPool, BYTE nBufs)
 {
@@ -593,16 +597,12 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 	kobj->tail = 0;
 	kobj->data = 0;
 	kobj->room = K_DEF_PIPE_SIZE;
-	if (err < 0)
-		return (err);
 	err = EVNTINIT(&(kobj->evData));
-	if (err < 0)
-		return (err);
+	assert(err==0);
 	err = EVNTINIT(&(kobj->evRoom));
-	if (err < 0)
-		return (err);
+	assert(err==0);
 	K_EXIT_CR
-	return (K_SUCCESS);
+	return (err);
 }
 
 UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
@@ -789,9 +789,16 @@ K_ERR kMesgQInit(K_MESGQ* const kobj, ADDR const mesgPoolPtr,
     err = SEMINIT( &kobj->semaRoom, queueSize);
     assert(err==0);
 #endif
-    err = BLKPOOLINIT( & (kobj->mesgqMcb), (ADDR ) mesgPoolPtr,
-            (BYTE ) mesgSize, queueSize);
-    assert(err==0);
+    if (mesgPoolPtr!=NULL)
+    {
+    	err = BLKPOOLINIT( & (kobj->mesgqMcb), (ADDR ) mesgPoolPtr,
+    			(BYTE ) mesgSize, queueSize);
+    	assert(err==0);
+    }
+    else
+    {
+    	kobj->mesgqMcb.init=FALSE;
+    }
     err = QUEUEINIT( &kobj->mesgqList, "qlist");
     assert(err==0);
     kobj->itemSize = mesgSize;
@@ -810,6 +817,10 @@ K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
         KFAULT(FAULT_OBJ_NOT_INIT);
     if (kobj->itemSize < mesgSize)
         return (K_ERR_MESG_SIZE);
+    if (kobj->mesgqMcb.init==FALSE)
+    {
+    	return (K_ERR_MESGQ_NO_BUFFER);
+    }
 #if (K_DEF_MESGQ_BLOCK_FULL==ON)
     SEMDWN( &kobj->semaRoom);
 #endif
@@ -833,10 +844,38 @@ K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
     }
     /*add sysmesg on queue list */
     K_ERR err = ENQUEUE( &kobj->mesgqList, & (kMesgPtr->mesgNode));
-    if (err < 0)
+    assert(err==0);
+    SEMUP( & (kobj->semaItem));
+    K_EXIT_CR
+    DMB
+    return (K_SUCCESS);
+}
+
+K_ERR kMesgQSendPtr(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize)
+{
+
+    K_CR_AREA
+    if (IS_NULL_PTR(kobj) || IS_NULL_PTR(mesgPtr))
+        KFAULT(FAULT_NULL_OBJ);
+    if (kobj->init == FALSE)
+        KFAULT(FAULT_OBJ_NOT_INIT);
+    if (kobj->itemSize < mesgSize)
+        return (K_ERR_MESG_SIZE);
+#if (K_DEF_MESGQ_BLOCK_FULL==ON)
+    SEMDWN( &kobj->semaRoom);
+#endif
+    K_ENTER_CR
+    K_MESG* kMesgPtr = MESGGET();
+
+    if (kMesgPtr == NULL)
     {
-        kErrHandler(FAULT_LIST);
+        KFAULT(FAULT_MEM_ALLOC);
     }
+    kMesgPtr->mesgPtr = mesgPtr;
+    kMesgPtr->senderTid = runPtr->uPid;
+    kMesgPtr->mesgSize = mesgSize;
+    K_ERR err = ENQUEUE( &kobj->mesgqList, & (kMesgPtr->mesgNode));
+    assert(err==0);
     SEMUP( & (kobj->semaItem));
     K_EXIT_CR
     DMB
@@ -852,6 +891,10 @@ K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR const recvMesgPtr, TID* senderTIDPtr)
     if (kobj->init == FALSE)
         return (K_ERR_OBJ_NOT_INIT);
     K_ERR err = K_SUCCESS;
+    if (kobj->mesgqMcb.init==FALSE)
+    {
+    	return (K_ERR_MESGQ_NO_BUFFER);
+    }
     SEMDWN( &kobj->semaItem);
     K_ENTER_CR
     /* copy data */
