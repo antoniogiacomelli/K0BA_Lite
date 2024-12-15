@@ -41,14 +41,15 @@ extern "C" {
 #define TIMHANDLER_STACKSIZE  128
 #define TIMHANDLER_ID        255
 #define IDLETASK_ID           0
+#define INVALID_TID			  IDLETASK_ID
 
 #define MSGBUFF_SIZE sizeof(K_MESG)
 #define TIMER_SIZE   sizeof(K_TIMER)
 
-#define _N_SYSTASKS          2 /*idle task + tim handler*/
+#define N_SYSTASKS          2 /*idle task + tim handler*/
 
 /*** Config values */
-#define NTHREADS             (K_DEF_N_USRTASKS + _N_SYSTASKS)
+#define NTHREADS             (K_DEF_N_USRTASKS + N_SYSTASKS)
 #define NPRIO               (K_DEF_MIN_PRIO + 1)
 #define K_DEF_ENQ_PRIO  (0)
 #define K_DEF_ENQ_FIFO  (1)
@@ -75,7 +76,7 @@ typedef struct kTcb TCB;
  *                            o//
  *                           /
  *                          ))
- *****************************************************************************************/
+ *******************************************************************************/
 
 /* SYNCH PRIMITIVES */
 
@@ -114,9 +115,11 @@ typedef struct kTcb TCB;
 #define ISB								asm volatile ("isb 0xF":::"memory");
 #define NOP                             asm volatile ("nop");
 
-/*  helpers */
-/* we use this macro so we dont mind reentrancy */
+/*_ means assembly hardwired code parms */
+#define _K_SWTCH asm volatile("svc #0xC5");
+#define _K_STUP asm volatile("svc #0xAA");
 
+/*  helpers */
 #define CPY(d,s,z, r)                                 \
  do                                                   \
  {                                                    \
@@ -130,96 +133,35 @@ typedef struct kTcb TCB;
       }                                               \
   } while(0U)
 
-/*
- * brief Macro to get the address of the container structure
- * param memberPtr Pointer to the member
- * param containerType The type of the container structure
- * param memberName The name of the member inside the structure
- */
-
 #define K_GET_CONTAINER_ADDR(memberPtr, containerType, memberName) \
     ((containerType *)((unsigned char *)(memberPtr) - \
      offsetof(containerType, memberName)))
-
-/* brief Critical region macro to declare a variable for critical
- * region state */
 #define K_CR_AREA  UINT32 crState;
-
-/* brief Macro to enter critical region */
 #define K_ENTER_CR crState = kEnterCR();
-
-/* brief Macro to exit critical region */
 #define K_EXIT_CR  kExitCR(crState);
-
-/* brief Trigger Context Switch */
 #define K_PEND_CTXTSWTCH K_TRAP_PENDSV
 
 #define READY_HIGHER_PRIO(ptr) ((ptr->priority < nextTaskPrio) ? 1 : 0)
-
-/*
- * brief Max value for tick type
- */
 #define K_TICK_TYPE_MAX ((1ULL << (8 * sizeof(typeof(TICK)))) - 1)
-
-/*
- * brief Max value for priority type
- */
 #define K_PRIO_TYPE_MAX ((1ULL << (8 * sizeof(typeof(PRIO)))) - 1)
-
-/*
- * brief Gets the address of the container structure of a node
- * param nodePtr Pointer to the node
- * param containerType Type of the container
- */
-
-
 #define IS_NULL_PTR(ptr) ((ptr) == NULL ? 1 : 0)
 
-/*
- * brief Software interrupt (trap) for PendSV
- */
 #define K_TRAP_PENDSV  \
                        \
     ISB		           \
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk; \
     DSB
 
-/*
- * brief Software interrupt (trap) for Supervisor Call
- * param N Supervisor call number
- */
-
 #define K_TRAP_SVC(N)  \
     do { asm volatile ("svc %0" :: "i" (N)); } while(0U)
 
-/*
- * brief Enables the system tick
- */
 #define K_TICK_EN  SysTick->CTRL |= 0xFFFFFFFF;
-
-/*
- * brief Disables the system tick
- */
 #define K_TICK_DIS SysTick->CTRL &= 0xFFFFFFFE;
-
-/*
- * brief Macro to convert version numbers to string.
- *
- */
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
-
-/*
- * brief Macro to get the version as a string
- */
-#define VERSION_STRING \
-    TOSTRING(VERSION.major) "." \
-    TOSTRING(VERSION.minor) "." \
-    TOSTRING(VERSION.patch)
-
 #define IS_INIT(obj) (obj)->init) ? (1) : (0)
-
 #define DEADCODE (0)
+
 
 __STATIC_FORCEINLINE unsigned kIsISR()
 {
@@ -240,9 +182,9 @@ __STATIC_FORCEINLINE unsigned kIsISR()
  *        ~´`-´
  *        ~-'
  *
- *
- *     '
- *    .
+ *      `.´
+ *      '
+ *     .
  *********************************************************************************/
 
 #ifdef __cplusplus

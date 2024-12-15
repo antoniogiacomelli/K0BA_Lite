@@ -29,55 +29,84 @@
 
 /*******************************************************************************
  * BLOCKING/SYNCHRONOUS MAILBOX
- *******************************************************************************/
+ ******************************************************************************/
 #if (K_DEF_MBOX==ON)
-K_ERR kMboxInit(K_MBOX *const kobj, SIZE mailSize, ADDR initMailPtr)
+K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize)
 {
 	K_CR_AREA
-	K_ENTER_CR
 	K_ERR err = -1;
 	if (kobj == NULL)
 	{
 		KFAULT(FAULT_NULL_OBJ);
 		return (K_ERROR);
 	}
-	BOOL fullFlag = (initMailPtr == NULL) ? (FALSE) : (TRUE);
-	kobj->mboxState = (fullFlag) ? (MBOX_FULL) : (MBOX_EMPTY);
-	kobj->senderTID = 0;
-	kobj->init = TRUE;
-	if (fullFlag)
+	if (buf == NULL)
 	{
-		kobj->mailPtr = initMailPtr;
+		KFAULT(FAULT_NULL_OBJ);
+		return (K_ERROR);
 	}
+	if (mailSize == 0)
+	{
+		return (K_ERR_MBOX_SIZE);
+	}
+	K_ENTER_CR
+
+	kobj->mailPtr = buf;
 	kobj->mailSize = mailSize;
-	kListInit(&kobj->readersMailQueue, "rdMailQ");
-	kListInit(&kobj->writersMailQueue, "wrMailQ");
+	kobj->mboxState = MBOX_EMPTY;
+	kobj->channel = NULL;
+
+#if (K_DEF_SYNCH_MBOX==ON)
+	K_ERR listerr;
+	listerr = kListInit(&kobj->waitingQueue, "mailq");
+	assert(listerr == 0);
+#endif
+
+	kobj->init = TRUE
+	;
 	K_EXIT_CR
 	return (err);
 }
 
+K_ERR kMboxName(K_MBOX *const kobj, TID id)
+{
+	K_CR_AREA
 
+	K_ENTER_CR
 
-/******************************************************************************
- * mbox contract:
- * (1) a mailbox is either full or empty.
- * (2) a rder blocks on an empty box.
- * (3) a wrtr blocks on a full box.
- * (4) when a rder successfully access a mbox, it is now the owner, and mbox
- *     will be empty. a wrtr is free, if any.
- * (5) when a wrtr successfully access a mbox, it is now the owner, and mbox
- *     will be full. a rder is free, if any.
- * (6) from (1)-(5), a box cannot have a wrt and rdr ownr at once.
- * (7) when blocking, higher prio wanna-access-task propagates its prio to
- *     the owner.
- * (8) the owner restores its priority when the wanna-access gains access
- ****************************************************************************/
-K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr)
+	K_ERR err;
+
+	if (kobj == NULL)
+	{
+		K_EXIT_CR
+		return (K_ERROR);
+
+	}
+	PID pid = kGetTaskPID(id);
+	if ((pid > 0) && (pid < 255))
+	{
+		kobj->channel = &tcbs[pid];
+		tcbs[pid].namedMbox = kobj;
+		err = K_SUCCESS;
+
+	}
+	else
+	{
+		err = K_ERR_INVALID_TID;
+	}
+	K_EXIT_CR
+	return (err);
+
+}
+
+#if (K_DEF_SYNCH_MBOX==ON)
+
+K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr)
 {
 	K_CR_AREA
 	if (kIsISR())
 	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+		return (K_ERR_MBOX_ISR);
 	}
 	if ((kobj == NULL) || (sendPtr == NULL))
 	{
@@ -87,18 +116,22 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr)
 	{
 		KFAULT(FAULT_OBJ_NOT_INIT);
 	}
-
+	if (kobj->channel->pid == runPtr->pid)
+	{
+		return (K_ERR_NAMED_MBOX_SEND_SELF);
+	}
 	K_ENTER_CR
+
 	/* a reader is yet to read */
 	if (kobj->mboxState == MBOX_FULL)
 	{
 		/* not-empty blocks a writer */
 #if(K_DEF_MBOX_ENQ==K_DEF_ENQ_FIFO)
-		kTCBQEnq(&kobj->writersMailQueue, runPtr);
+		kTCBQEnq(&kobj->waitingQueue, runPtr);
 #else
-		kTCBQEnqByPrio(&kobj->writersMailQueue, runPtr);
+		kTCBQEnqByPrio(&kobj->waitingQueue, runPtr);
 #endif
-		runPtr->status = PENDING_FULL_MBOX;
+		runPtr->status = SENDING;
 		if ((kobj->owner != NULL) && (runPtr->priority < kobj->owner->priority))
 		{
 			kobj->owner->priority = runPtr->priority;
@@ -114,30 +147,39 @@ K_ERR kMboxPost(K_MBOX *const kobj, ADDR const sendPtr)
 	}
 	kobj->owner = runPtr;
 	kobj->senderTID = runPtr->uPid;
-	kobj->mailPtr = sendPtr;
-	kobj->mboxState = MBOX_FULL;
-
-	/*  full: unblock a reader */
-	if (kobj->readersMailQueue.size > 0)
+	UINT32 err = 0;
+	CPY(kobj->mailPtr, sendPtr, kobj->mailSize, err);
+	if (err > 0)
 	{
-		K_TCB *freeReadPtr;
-		kTCBQDeq(&kobj->readersMailQueue, &freeReadPtr);
-		K_ERR err = kReadyCtxtSwtch(freeReadPtr);
-		assert(err==0);
+		kobj->mboxState = MBOX_FULL;
+		/*  full: unblock a reader, if any */
+		if (kobj->waitingQueue.size > 0)
+		{
+			K_TCB *freeReadPtr;
+			kTCBQDeq(&kobj->waitingQueue, &freeReadPtr);
+			assert(freeReadPtr != NULL);
+			assert(freeReadPtr->status == RECEIVING);
+			kTCBQEnq(&readyQueue[freeReadPtr->priority], freeReadPtr);
+			freeReadPtr->status = READY;
+			if (freeReadPtr->priority < runPtr->priority)
+				K_PEND_CTXTSWTCH
+		}
+		K_EXIT_CR
+		return (K_SUCCESS);
 	}
 	K_EXIT_CR
-	return (K_SUCCESS);
+	return (K_ERR_MEM_CPY);
 }
 
-TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
+K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID *senderIDPtr)
 {
 	K_CR_AREA
 
 	if (kIsISR())
 	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+		return (K_ERR_MBOX_ISR);
 	}
-	if ((kobj == NULL) || (recvPPtr == NULL))
+	if ((kobj == NULL) || (recvPtr == NULL))
 	{
 		KFAULT(FAULT_NULL_OBJ);
 	}
@@ -145,19 +187,23 @@ TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
 	{
 		KFAULT(FAULT_OBJ_NOT_INIT);
 	}
-
 	K_ENTER_CR
-
+	if ((kobj->channel != NULL) && (runPtr->pid != kobj->channel->pid))
+	{
+		K_EXIT_CR
+		return (K_ERR_NAMED_MBOX_RECV);
+	}
 	if (kobj->mboxState == MBOX_EMPTY)
 	{
+
 #if(K_DEF_MBOX_ENQ==K_DEF_ENQ_FIFO)
-		kTCBQEnq(&kobj->readersMailQueue, runPtr);
+		kTCBQEnq(&kobj->waitingQueue, runPtr);
 #else
-		kTCBQEnqByPrio(&kobj->readersMailQueue, runPtr);
+		kTCBQEnqByPrio(&kobj->waitingQueue, runPtr);
 #endif
-		runPtr->status = PENDING_EMPTY_MBOX;
+		runPtr->status = RECEIVING;
 		runPtr->pendingMbox = kobj;
-		/* priority inheritance */
+		/* priority propagation */
 		if ((kobj->owner != NULL) && (runPtr->priority < kobj->owner->priority))
 		{
 			kobj->owner->priority = runPtr->priority;
@@ -172,23 +218,181 @@ TID kMboxPend(K_MBOX *const kobj, ADDR* recvPPtr)
 		kobj->owner->priority = kobj->owner->realPrio;
 	}
 	kobj->owner = runPtr;
-	*recvPPtr = kobj->mailPtr;
-	kobj->mailPtr=NULL; /*destroy mesg in mbox*/
-	kobj->mboxState = MBOX_EMPTY;
-
-	/* empty: unblock a writer */
-	if (kobj->writersMailQueue.size > 0)
+	UINT32 err;
+	/* transfer from buf to dest */
+	CPY(recvPtr, kobj->mailPtr, kobj->mailSize, err);
+	if (err > 0)
 	{
-		K_TCB *freeWriterPtr;
-		kTCBQDeq(&kobj->writersMailQueue, &freeWriterPtr);
-		K_ERR err = kReadyCtxtSwtch(freeWriterPtr);
-		assert(err==0);
+		kobj->mboxState = MBOX_EMPTY;
+		/* empty: unblock a writer, if any */
+		if (kobj->waitingQueue.size > 0)
+		{
+			K_TCB *freeWriterPtr;
+			kTCBQDeq(&kobj->waitingQueue, &freeWriterPtr);
+			assert(freeWriterPtr != NULL);
+			assert(freeWriterPtr->status == SENDING);
+			kTCBQEnq(&readyQueue[freeWriterPtr->priority], freeWriterPtr);
+			freeWriterPtr->status = READY;
+			if (freeWriterPtr->priority < runPtr->priority)
+				K_PEND_CTXTSWTCH
+		}
+
+		if (senderIDPtr != NULL)
+			*senderIDPtr = kobj->senderTID;
+		K_EXIT_CR
+		return (K_SUCCESS);
+	}
+	K_EXIT_CR
+	return (K_ERR_MEM_CPY);
+}
+
+#endif
+
+#if (K_DEF_AMBOX==ON)
+K_ERR kMboxAsend(K_MBOX *const kobj, ADDR const sendPtr)
+{
+	K_CR_AREA
+
+	if ((kobj == NULL) || (sendPtr == NULL))
+	{
+		KFAULT(FAULT_NULL_OBJ);
+	}
+	if (!kobj->init)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
 	}
 
+	K_ENTER_CR
+	if (kobj->channel->pid == runPtr->pid)
+	{
+		K_EXIT_CR
+		return (K_ERR_NAMED_MBOX_SEND_SELF);
+	}
+	/* a reader is yet to read */
+	if (kobj->mboxState == MBOX_FULL)
+	{
+			K_EXIT_CR
+			return (K_ERR_MBOX_FULL);
+	}
+	kobj->senderTID = runPtr->uPid;
+	UINT32 err = 0;
+	CPY(kobj->mailPtr, sendPtr, kobj->mailSize, err);
+	if(err>0)
+	kobj->mboxState = MBOX_FULL;
 	K_EXIT_CR
-
-	return (kobj->senderTID);
+	return (K_SUCCESS);
 }
+
+K_ERR kMboxAsendOvw(K_MBOX *const kobj, ADDR const sendPtr)
+{
+	K_CR_AREA
+
+	if ((kobj == NULL) || (sendPtr == NULL))
+	{
+		KFAULT(FAULT_NULL_OBJ);
+	}
+	if (!kobj->init)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
+	}
+
+	K_ENTER_CR
+	if (kobj->channel->pid == runPtr->pid)
+	{
+		K_EXIT_CR
+		return (K_ERR_NAMED_MBOX_SEND_SELF);
+	}
+	kobj->senderTID = runPtr->uPid;
+	UINT32 err = 0;
+	CPY(kobj->mailPtr, sendPtr, kobj->mailSize, err);
+	if(err>0)
+	kobj->mboxState = MBOX_FULL;
+	K_EXIT_CR
+	return (K_SUCCESS);
+}
+
+K_ERR kMboxArecv(K_MBOX *const kobj, ADDR recvPtr, TID *senderTIDPtr)
+{
+	K_CR_AREA
+
+
+	if ((kobj == NULL) || (recvPtr == NULL))
+	{
+		KFAULT(FAULT_NULL_OBJ);
+	}
+	if (!kobj->init)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
+	}
+
+	K_ENTER_CR
+	if ((kobj->channel != NULL) && (runPtr->pid != kobj->channel->pid))
+	{
+		K_EXIT_CR
+		return (K_ERR_NAMED_MBOX_RECV);
+	}
+	if (kobj->mboxState == MBOX_EMPTY)
+	{
+		K_EXIT_CR
+		return (K_ERR_MBOX_EMPTY);
+	}
+	UINT32 err;
+	/* transfer from buf to dest */
+	CPY(recvPtr, kobj->mailPtr, kobj->mailSize, err);
+	if (err > 0)
+	{
+		kobj->mboxState = MBOX_EMPTY;
+		if (senderTIDPtr != NULL)
+			*senderTIDPtr = kobj->senderTID;
+		K_EXIT_CR
+		return (K_SUCCESS);
+	}
+	K_EXIT_CR
+	return (K_ERR_MEM_CPY);
+}
+
+
+K_ERR kMboxArecvKeep(K_MBOX *const kobj, ADDR recvPtr, TID *senderTIDPtr)
+{
+	K_CR_AREA
+
+
+	if ((kobj == NULL) || (recvPtr == NULL))
+	{
+		KFAULT(FAULT_NULL_OBJ);
+	}
+	if (!kobj->init)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
+	}
+
+	K_ENTER_CR
+	if ((kobj->channel != NULL) && (runPtr->pid != kobj->channel->pid))
+	{
+		K_EXIT_CR
+		return (K_ERR_NAMED_MBOX_RECV);
+	}
+	if (kobj->mboxState == MBOX_EMPTY)
+	{
+		K_EXIT_CR
+		return (K_ERR_MBOX_EMPTY);
+	}
+	UINT32 err;
+	/* transfer from buf to dest */
+	CPY(recvPtr, kobj->mailPtr, kobj->mailSize, err);
+	if (err > 0)
+	{
+		if (senderTIDPtr != NULL)
+			*senderTIDPtr = kobj->senderTID;
+		K_EXIT_CR
+		return (K_SUCCESS);
+	}
+	K_EXIT_CR
+	return (K_ERR_MEM_CPY);
+}
+
+
+#endif
 
 K_MBOX_STATUS kMboxQuery(K_MBOX *const kobj)
 {
@@ -200,215 +404,6 @@ SIZE kMboxGetSize(K_MBOX *const kobj)
 {
 
 	return (kobj->mailSize);
-}
-
-#endif
-
-/*******************************************************************************
- * FULL ASYNCHRONOUS MAILBOX
- *******************************************************************************/
-#if (K_DEF_AMBOX==ON)
-
-K_ERR kAmboxInit(K_AMBOX *const kobj, ADDR initMailPtr, BYTE initMailSize)
-{
-
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-		K_EXIT_CR
-		return (K_ERROR);
-	}
-	if ((initMailPtr != NULL) && (initMailSize == 0))
-	{
-		K_EXIT_CR
-		return (K_ERR_MBOX_SIZE);
-	}
-	if ((initMailPtr == NULL) && (initMailSize > 0))
-	{
-		K_EXIT_CR
-		return (K_ERR_MBOX_SIZE);
-	}
-	kobj->init = TRUE;
-	if (initMailPtr != NULL)
-	{
-		kobj->aMailSize = initMailSize;
-	}
-	else
-	{
-		kobj->aMailPtr = NULL;
-		kobj->aMailSize = 0;
-	}
-	K_EXIT_CR
-	return (K_SUCCESS);
-}
-K_ERR kAmboxRecvCpy(K_AMBOX *const kobj, ADDR const recvPtr)
-{
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-		K_EXIT_CR
-		return (K_ERR_OBJ_NULL);
-	}
-	if (!kobj->init)
-	{
-		KFAULT(FAULT_OBJ_NOT_INIT);
-		K_EXIT_CR
-		return (K_ERR_OBJ_NOT_INIT);
-	}
-	if (kobj->aMailPtr == NULL)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_EMPTY);
-	}
-	if (kobj->aMailSize == 0)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_SIZE);
-	}
-	UINT32 r;
-	CPY(recvPtr, kobj->aMailPtr, kobj->aMailSize, r);
-	if (r != 0)
-	{
-		/* destroy data */
-		kobj->aMailPtr = NULL;
-		K_EXIT_CR
-		return (K_SUCCESS);
-	}
-	K_EXIT_CR
-	return (K_ERROR);
-}
-
-K_ERR kAmboxRecv(K_AMBOX *const kobj, ADDR* const recvPtr)
-{
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-		K_EXIT_CR
-		return (K_ERR_OBJ_NULL);
-	}
-	if (!kobj->init)
-	{
-		KFAULT(FAULT_OBJ_NOT_INIT);
-		K_EXIT_CR
-		return (K_ERR_OBJ_NOT_INIT);
-	}
-	if (kobj->aMailPtr == NULL)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_EMPTY);
-	}
-	if (kobj->aMailSize == 0)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_SIZE);
-	}
-	UINT32 r;
-	CPY(recvPtr, kobj->aMailPtr, kobj->aMailSize, r);
-	if (r != 0)
-	{
-		/* destroy data */
-		kobj->aMailPtr = NULL;
-		K_EXIT_CR
-		return (K_SUCCESS);
-	}
-	K_EXIT_CR
-	return (K_ERROR);
-}
-
-/* it does not destroy the message*/
-K_ERR kAmboxRecvKeep(K_AMBOX *const kobj, ADDR const recvPtr)
-{
-
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-	}
-	if (!kobj->init)
-	{
-		KFAULT(FAULT_OBJ_NOT_INIT);
-	}
-	if (kobj->aMailPtr == NULL)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_EMPTY);
-	}
-	if (kobj->aMailSize == 0)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_SIZE);
-	}
-	UINT32 r;
-	CPY(recvPtr, kobj->aMailPtr, kobj->aMailSize, r);
-	/* keep the message here  */
-	if (r != 0)
-	{
-		K_EXIT_CR
-		return (K_SUCCESS);
-	}
-	K_EXIT_CR
-	return (K_ERR_MESG_CPY);
-}
-
-K_ERR kAmboxSend(K_AMBOX *const kobj, ADDR const sendPtr, SIZE aMailSize)
-{
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(sendPtr))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-		return (K_ERR_OBJ_NULL);
-	}
-	if (!kobj->init)
-	{
-		KFAULT(FAULT_OBJ_NOT_INIT);
-		K_EXIT_CR
-	}
-	if (kobj->aMailPtr != NULL)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_FULL);
-	}
-	if (aMailSize == 0)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_SIZE);
-	}
-	kobj->aMailPtr = sendPtr;
-	kobj->aMailSize = aMailSize;
-	K_EXIT_CR
-	return (K_SUCCESS);
-}
-/* it doesnt check for a full box*/
-K_ERR kAmboxSendOvw(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize)
-{
-	K_CR_AREA
-	K_ENTER_CR
-	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(sendPtr))
-	{
-		KFAULT(FAULT_NULL_OBJ);
-		return (K_ERR_OBJ_NULL);
-	}
-	if (kobj->init == FALSE)
-	{
-		KFAULT(FAULT_OBJ_NOT_INIT);
-	}
-	if (aMailSize == 0)
-	{
-		K_EXIT_CR
-		return (K_ERR_AMBOX_SIZE);
-	}
-	kobj->aMailPtr = sendPtr;
-	kobj->aMailSize = aMailSize;
-	K_EXIT_CR
-	return (K_SUCCESS);
 }
 
 #endif
@@ -439,7 +434,7 @@ K_ERR kAmboxSendOvw(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize)
 /* u best use d'allocator     */
 /* my homie b4da55            */
 /* here no heap will trip     */
-/* we no fragment no address  */
+/* we dont frag an address    */
 
 K_ERR kPDQInit(K_PDQ *const kobj, K_PDBUF *bufPool, BYTE nBufs)
 {
@@ -593,12 +588,16 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 	kobj->tail = 0;
 	kobj->data = 0;
 	kobj->room = K_DEF_PIPE_SIZE;
+	if (err < 0)
+		return (err);
 	err = EVNTINIT(&(kobj->evData));
-	assert(err==0);
+	if (err < 0)
+		return (err);
 	err = EVNTINIT(&(kobj->evRoom));
-	assert(err==0);
+	if (err < 0)
+		return (err);
 	K_EXIT_CR
-	return (err);
+	return (K_SUCCESS);
 }
 
 UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
@@ -687,7 +686,7 @@ UINT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
 
 #if(K_DEF_MESGQ==ON)
 
-/*SysMesg Poolf*/
+/*SysMesg Pool*/
 
 static MESG sysmesgPool[K_DEF_N_MESG]; /* reserved memory  */
 static QUEUE sysmesgQueue; /* the double-list as a queue */

@@ -46,6 +46,11 @@
 #endif
 #endif
 
+#if (K_DEF_MIN_PRIO > 31)
+#	error "Invalid minimal effective priority. (Max numerical value: 31)"
+#endif
+
+
 /******************************************************************************
  * ERROR HANDLING
  ******************************************************************************/

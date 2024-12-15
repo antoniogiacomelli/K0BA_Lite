@@ -30,7 +30,6 @@ struct kList
 	BOOL init;
 };
 
-
 struct kTcb
 {
 	UINT32* sp;           /* Saved stack pointer */
@@ -48,24 +47,28 @@ struct kTcb
 #endif
 	STRING taskName;      /* Task name */
     BOOL runToCompl;      /* Cooperative-only task     */
-	TICK busyWaitTime;    /* Busy-Delay in ticks 			   */
-    TICK   attmptCntr;      /* Trying to access CR */
+	TICK busyWaitTime;    /* Busy-Delay in ticks 	   */
+    TICK   attmptCntr;      /* Trying to access CR 	   */
+/*--- RESOURCES-----------------------------------------*/
 #if (K_DEF_SEMA == ON)
-    K_SEMA* pendingSema;  /* Pending sema    */
+    K_SEMA* pendingSema;
 #endif
 #if (K_DEF_MUTEX==ON)
-	K_MUTEX* pendingMutx;  /* Pending mutex          */
+	K_MUTEX* pendingMutx;
 #endif
 #if (K_DEF_SLEEPWAKE==ON)
-	K_EVENT* pendingEv;   /* Pending event */
+	K_EVENT* pendingEv;
 #endif
 #if (K_DEF_MBOX==ON)
-	K_MBOX* pendingMbox;   /* Pending mbox */
+	K_MBOX* pendingMbox;
+	K_MBOX* namedMbox;
 #endif
-	K_TIMER* pendingTmr;  /* Pending timer */
+	K_TIMER* pendingTmr;
+/*--- MONITORING ------------------------------------------*/
 	UINT32 lostSignals;   /* Number of lost direct signals */
 	UINT32 nPreempted;    /* Preemption count  */
 	PID    preemptedBy;   /* PID that preempted */
+/*-----------------------------------------------------------*/
     struct kListNode tcbNode; /* Aggregated list node 	   */
 } __attribute__((aligned));
 
@@ -147,31 +150,22 @@ struct kMemBlock
 /* Indirect Blocking or Fully Synchronous Mailbox */
 struct kMailbox
 {
-     BOOL init;
-    /*[CONTROL]*/
+
+    BOOL init;
     K_MBOX_STATUS mboxState;
+#if (K_DEF_SYNCH_MBOX==ON)
+
     K_TCB* owner;
-    struct kList writersMailQueue;
-    struct kList readersMailQueue;
-    /*EXCHANGE*/
-    TID senderTID;
+    struct kList waitingQueue;
+
+#endif
+    K_TCB* channel;
+    TID    senderTID;
     SIZE   mailSize;
     ADDR   mailPtr;
 } __attribute__((aligned(4)));
-#endif
-
-
-#if (K_DEF_AMBOX==ON)
-
-struct kAsynchMbox
-{
-    BOOL init;
-    BYTE aMailSize;
-    ADDR aMailPtr;
-} __attribute__((aligned(4)));
 
 #endif
-
 
 #if ((K_DEF_MESGQ==ON))
 
@@ -198,7 +192,6 @@ struct kMesgQ
 };
 
 #endif /*K_DEF_MSG_QUEUE*/
-
 
 #if (K_DEF_PDQ== ON)
 

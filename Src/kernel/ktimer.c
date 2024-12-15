@@ -30,6 +30,7 @@
 K_MEM timerMem;
 K_TIMER* dTimReloadList = NULL; /* periodic timers */
 K_TIMER* dTimOneShotList = NULL; /* reload	  timers */
+K_TIMER* dTimSleepList = NULL;
 K_TIMER timerPool[K_DEF_N_TIMERS];
 static BOOL timerPoolInit = FALSE;
 
@@ -49,7 +50,7 @@ K_TIMER* kTimerGet(VOID)
 
 	K_TIMER* retValPtr;
 	retValPtr = (K_TIMER*) kMemAlloc( &timerMem);
-	return retValPtr;
+	return (retValPtr);
 }
 
 K_ERR kTimerPut(K_TIMER* const kobj)
@@ -57,9 +58,9 @@ K_ERR kTimerPut(K_TIMER* const kobj)
 
 	if (kMemFree( &timerMem, (ADDR) kobj) == 0)
 	{
-		return K_SUCCESS;
+		return (K_SUCCESS);
 	}
-	return K_ERROR;
+	return (K_ERROR);
 }
 
 K_ERR kTimerInit(STRING timerName, TICK ticks, CALLOUT funPtr, ADDR argsPtr,
@@ -71,17 +72,17 @@ K_ERR kTimerInit(STRING timerName, TICK ticks, CALLOUT funPtr, ADDR argsPtr,
 	{
 		assert(
 				kTimerListAdd_( &dTimReloadList, timerName, ticks, funPtr,
-						argsPtr, reload) == K_SUCCESS);
+						argsPtr, reload) == (K_SUCCESS));
 		K_EXIT_CR
-		return K_SUCCESS;
+		return (K_SUCCESS);
 	}
 	else
 	{
 		assert(
 				kTimerListAdd_( &dTimOneShotList, timerName, ticks, funPtr,
-						argsPtr, reload) == K_SUCCESS);
+						argsPtr, reload) == (K_SUCCESS));
 		K_EXIT_CR
-		return K_ERROR;
+		return (K_ERROR);
 	}
 }
 
@@ -92,7 +93,7 @@ static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
 	K_TIMER* newTimerPtr = kTimerGet();
 	if (newTimerPtr == NULL)
 	{
-		return K_ERROR;
+		return (K_ERROR);
 	}
 	newTimerPtr->timerName = timerName;
 	newTimerPtr->dTicks = ticks;
@@ -105,7 +106,7 @@ static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
 	{
 
 		*selfPtr = newTimerPtr;
-		return K_SUCCESS;
+		return (K_SUCCESS);
 	}
 	K_TIMER* currListPtr = *selfPtr;
 	K_TIMER* prevListPtr = NULL;
@@ -135,7 +136,7 @@ static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
 	{
 		prevListPtr->nextPtr = newTimerPtr;
 	}
-	return K_SUCCESS;
+	return (K_SUCCESS);
 }
 static K_TIMER timReloadCpy = {0};
 BOOL kTimerHandler(void)
@@ -184,20 +185,6 @@ BOOL kTimerHandler(void)
 /*******************************************************************************
  * SLEEP TIMER AND BUSY-WAIT-DELAY
  *******************************************************************************/
-static void SleepTimerCbk_(ADDR args)
-{
-	UNUSED(args);
-
-    K_TCB* tcbToWakePtr = NULL;
-    tcbToWakePtr = (K_TCB*) (dTimOneShotList->argsPtr);
-    if (tcbToWakePtr->status == SLEEPING)
-        assert(tcbToWakePtr != NULL);
-    assert( !kTCBQRem( &sleepingQueue, &tcbToWakePtr));
-    assert(tcbToWakePtr != NULL);
-    kReadyCtxtSwtch(tcbToWakePtr);
-    tcbToWakePtr->pendingTmr=NULL;
-}
-K_TCB* sleepTcbPtr = 0;
 void kSleep(TICK ticks)
 {
 	if (runPtr->status != RUNNING)
@@ -209,15 +196,14 @@ void kSleep(TICK ticks)
 
 	K_ENTER_CR
 
-	sleepTcbPtr = runPtr;
-	if ( !kTimerListAdd_( &dTimOneShotList, "SleepTimer", ticks, SleepTimerCbk_,
+	if ( !kTimerListAdd_( &dTimSleepList, "SleepTimer", ticks, NULL,
 			(K_TCB*) runPtr, ONESHOT))
 	{
 
 		if ( !kTCBQEnq( &sleepingQueue, runPtr))
 		{
 			runPtr->status = SLEEPING;
-			runPtr->pendingTmr = (K_TIMER*) (dTimOneShotList);
+			runPtr->pendingTmr = (K_TIMER*) (dTimSleepList);
 
 			K_PEND_CTXTSWTCH
 
@@ -240,5 +226,5 @@ VOID kBusyDelay(TICK delay)
 }
 TICK kTickGet(void)
 {
-	return runTime.globalTick;
+	return (runTime.globalTick);
 }

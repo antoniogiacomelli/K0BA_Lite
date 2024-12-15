@@ -12,7 +12,6 @@
 #define KSCH_H
 
 
-#include "kinternals.h"
 /* shared data */
 extern K_TCB* runPtr; /* Pointer to the running TCB */
 extern K_TCB tcbs[NTHREADS]; /* Pool of TCBs */

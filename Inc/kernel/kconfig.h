@@ -31,32 +31,28 @@
 #define ON     (1)
 #define OFF    (0)
 
-#define CUSTOM_ENV (1) /* include headers for HAL and compiler in kenv.h */
+/* include headers for HAL and compiler in kenv.h */
 /* and set this macro to 1                        */
+#define CUSTOM_ENV (1)
 
 
 /*** [Time Quantum] ***********************************************************/
 #define K_DEF_TICK_PERIOD            (TICK_5MS)
 
 
-/*** [User assigned tasks] ******************************************************/
+/*** [Number of user-defined tasks] *******************************************/
 #define K_DEF_N_USRTASKS    	     (3)
 
-/*** The lowest effective priority, that is the highest user-defined value      */
+/*** The lowest effective priority, that is the highest user-defined value    */
 #define K_DEF_MIN_PRIO	           	 (3)
 
 
-/*** [Time-Slice Scheduling]****************************************************/
+/*** [Time-Slice Scheduling]***************************************************/
 #define K_DEF_SCH_TSLICE			 (OFF)
 
 
 /*** [App Timers] *************************************************************/
 #define K_DEF_N_TIMERS                (K_DEF_N_USRTASKS+1)
-
-
-/*** [Allocator] **************************************************************/
-/* Round-up block sizes to multiple of 4 if not								  */
-#define K_DEF_MEMBLOCK_ALIGN_4        (ON)
 
 
 /*** [Semaphores] *************************************************************/
@@ -65,22 +61,21 @@
 /*** Semaphore enqueing discipline	 */
 /*** Options: 					  	 */
 /*** (K_DEF_ENQ_PRIO) 		         */
-/*** (K_DEF_ENQ_FIFO)	     		 */
 
 /*** Default: K_DEF_ENQ_PRIO 	     */
 #define K_DEF_SEMA_ENQ       (K_DEF_ENQ_PRIO)
 
 /*** [Mutexes] ****************************************************************/
-#define K_DEF_MUTEX                   (OFF)
-
+#define K_DEF_MUTEX                   (ON)
+#define K_DEF_MUTEX_ENQ				  (K_DEF_ENQ_PRIO)
 
 /*** [Sleep/Wake Events] *******************************************************/
-#define K_DEF_SLEEPWAKE               (ON)
+#define K_DEF_SLEEPWAKE               (OFF)
 
 /*** [Pipes] ******************************************************************/
 #if (K_DEF_SLEEPWAKE==ON)
 
-#define K_DEF_PIPE                    (ON)
+#define K_DEF_PIPE                    (OFF)
 #define K_DEF_PIPE_SIZE               (32)
 
 #endif
@@ -100,21 +95,26 @@
 #endif /*mesgq*/
 #endif
 
-/*** [Indirect Blocking (Synch) Mailbox] **************************************/
+/*** [Mailbox] ****************************************************************/
 
 #define K_DEF_MBOX	                  (ON)
+/* Synchronous mailbox */
+#define K_DEF_SYNCH_MBOX			  (ON)
+/* Enable asynchronous methods */
+#define K_DEF_AMBOX                   (OFF)
 
-/*** Mailbox enqueing discipline  */
-/*** Default: K_DEF_ENQ_FIFO      */
-#define K_DEF_MBOX_ENQ       (K_DEF_ENQ_FIFO)
+#if (K_DEF_SYNCH_MBOX==ON)
 
-/*** [Indirect Asynch Mailbox] ************************************************/
+/*** Synch Mailbox enqueing discipline  */
+/*** Default: K_DEF_ENQ_PRIO  		    */
+#define K_DEF_MBOX_ENQ       (K_DEF_ENQ_PRIO)
 
-#define K_DEF_AMBOX                   (ON)
+#endif
+
 
 /*** [Pump-Drop Queues] *******************************************************/
 
-#define K_DEF_PDQ                     (ON)
+#define K_DEF_PDQ                     (OFF)
 
 /*[EOF]*/
 

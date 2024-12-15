@@ -97,7 +97,7 @@ __attribute__((always_inline)) static inline K_ERR kListInit(K_LIST* const kobj,
 {
     if (kobj == NULL)
     {
-        return K_ERR_OBJ_NULL;
+        return (K_ERR_OBJ_NULL);
     }
     kobj->listDummy.nextPtr = & (kobj->listDummy);
     kobj->listDummy.prevPtr = & (kobj->listDummy);

@@ -49,7 +49,7 @@ void TimerHandlerTask(void)
 		if (dTimOneShotList || dTimReloadList)
 		{
 			if (kTimerHandler())
-			    kYield();
+				K_PEND_CTXTSWTCH
 		}
 		K_EXIT_CR
 	}

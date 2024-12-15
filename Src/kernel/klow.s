@@ -36,6 +36,7 @@
 
 /* kernel specifics  */
 .equ APP_START_UP_IMM,   0xAA
+.equ USR_CTXT_SWTCH,	 0xC5
 .equ FAULT_USR_APP_INIT, 0xFF
 .equ SP_OFFSET, 0
 .equ STATUS_OFFSET, 4
@@ -59,9 +60,9 @@ BX LR
 .global SVC_Handler
 .type SVC_Handler, %function
 .thumb_func
-SVC_Handler:       /* we single-use svc for start-up                     */
+SVC_Handler:       /* we start-up from msp               */
     TST LR, #4     /* for MSP, LR here shall end with a x9               */
-    BNE RETURN_ERR /* so, we test if bit 2 IS 0. NOT IS, error.          */
+    BNE CHECK_CTXTSWTCH /* swtch ctxts from psp */
    /*fallthrough: check if #N is what we are prepared to handle.         */
    /*  when trapping 6 reg are pushed                                    */
     MRS R12, MSP
@@ -72,10 +73,17 @@ SVC_Handler:       /* we single-use svc for start-up                     */
    /* [B]it towards the (-)minor address position                        */
     LDRB R12, [R1,#-2]
     CMP R12, #APP_START_UP_IMM
-    BEQ STARTUP
-    STARTUP:
-    B USRSTARTUP
-    RETURN_ERR:
+    BEQ USRSTARTUP
+    BNE ERR
+    CHECK_CTXTSWTCH:
+    CPSID I
+    MRS R12, PSP
+    LDR R1, [R12, #24]
+    LDRB R12, [R1,#-2]
+    CMP R12, #USR_CTXT_SWTCH
+    BEQ SWITCHTASK
+    /*fallthru*/
+    ERR:
     MOV R0, #FAULT_USR_APP_INIT
     BL  kErrHandler
 

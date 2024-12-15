@@ -174,6 +174,60 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 
 #endif
 
+/*******************************************************************************
+ * SYNCH MAILBOX
+ *******************************************************************************/
+
+#if (K_DEF_MBOX == ON)
+
+/**
+ * \brief               Initialises an indirect blocking mailbox.
+ *
+ * \param kobj          Mailbox address.
+ * \param buf			Mailbox storage address.
+ * \param mailSize		Mail size.
+ * \return              K_SUCCESS or specific error.
+ */
+K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize);
+
+/**
+ * \brief			   Name a mailbox creating a direct channel for a task.
+ * \param kobj		   Mailbox address
+ * \param id		   Task ID.
+ * \return			   K_ERROR / K_SUCCESS
+ */
+K_ERR kMboxName(K_MBOX *const kobj, TID id);
+
+/**
+ * \brief               Send to a mailbox. Task blocks when full.
+ * \param kobj          Mailbox address.
+ * \param sendPtr       Mail address.
+ * \return              K_SUCCESS or specific error.
+ */
+K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr);
+/**
+ * \brief               Receive from a mailbox. Block if empty.
+ *
+ * \param kobj          Mailbox address.
+ * \param recvPtr       Message destination address.
+ * \param senderIDPtr	Address to store the sender ID.
+ * \return				K_SUCCESS or specific error.
+ */
+K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID* senderIDPtr);
+
+/**
+ * \brief       		Return status of a mailbox: full, empty.
+ *
+ */
+K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
+
+/**
+ * \brief 				Return the size set for a message within a mailbox.
+ */
+SIZE kMboxGetSize(K_MBOX *const kobj);
+
+#endif
+
 /******************************************************************************/
 /* MESSAGE QUEUE                                                              */
 /******************************************************************************/
@@ -228,114 +282,6 @@ K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
 
 #endif /*K_DEF_MESGQ*/
-
-/*******************************************************************************
- * SYNCH MAILBOX
- *******************************************************************************/
-
-#if (K_DEF_MBOX == ON)
-
-/**
- * \brief               Initialises an indirect blocking mailbox.
- *
- * \param kobj          Mailbox address.
- * \param mailSize      Size of the message it will store.
- * \param initMailPtr   If initialised full, give the address of the initial
- *                      message.
- * \return              See ktypes.h
- */
-K_ERR kMboxInit(K_MBOX* const kobj, SIZE mailSize,
-        ADDR initMailPtr);
-
-/**
- * \brief               Post to a mailbox. Task blocks when full.
- * \param kobj          Mailbox address.
- * \param sendPtr       Message adddress.
- * \return              See ktypes.h
- */
-K_ERR kMboxPost(K_MBOX* const kobj, ADDR const sendPtr);
-
-/**
- * \brief               Pend on a mailbox to receive a message. Block if empty.
- *
- * \param kobj          Mailbox address.
- * \param recvPPtr      Pointer to copy the message.
- * \return              See ktypes.h
- */
-TID kMboxPend(K_MBOX* const kobj, ADDR* recvPtr);
-
-/**
- * \brief       		Return status of a mailbox: full, empty.
- *
- */
-K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
-
-/**
- * \brief 				Return the size set for a message within a mailbox, if any.
- */
-SIZE kMboxGetSize(K_MBOX *const kobj);
-
-#endif
-
-#if (K_DEF_AMBOX==ON)
-
-/**
- * \brief               Asynchronous mailboxes are meant to be flexible. They
- *                      can be employed 'as is' or the user can create the synch
- *                      mechanisms, and use it on ISRs.
- * \param kobj          Asynch Mailbox address.
- * \param initMailPtr   If you provide a pointer for a message, the mailbox will
- *                      be initialised as 'full'.
- * \param initMailSize  If you provide a initial pointer to a message you need
- *                      to provide its size.
- * \return              See ktypes.h
- */
-K_ERR kAmboxInit(K_AMBOX* const kobj, ADDR initMailPtr, BYTE initMailSize);
-/**
- * \brief               Send a message to an asynchronous mailbox.
-
- * \param kobj          Asynch mailbox address.
- * \param sendPtr       Message address.
- * \param nMailSize     Message size.
- * \return              It will return indicating if the message was sent or
- *                      if the mailbox was full and the message was not success
- *                      fuly placed.
- */
-K_ERR kAmboxSend(K_AMBOX* const kobj, ADDR const sendPtr, BYTE nMailSize);
-/**
- * \brief               Receive from an asynchronous mailbox. It copies the
- *                      message to a buffer provided by the receiver.
- *                      The message in box is destroyed afterwards.
- * \param kobj          Asynch mailbox address.
- * \param recvPtr       Address to store the message.
- * \return              It will return indicating if the message could have
- *                      been received or if the mailbox was empty.
- */
-K_ERR kAmboxRecv(K_AMBOX* const kobj, ADDR const recvPtr);
-/**
- * \brief               Receive from an asynchronous mailbox. It copies the
- *                      message to a buffer provided by the receiver, but
- *                      KEEP the message in the box. So, the box will still
- *                      be full.
- * \param kobj          Asynch mailbox address.
- * \param recvPtr       Address to store the message.
- * \return              It will return indicating if the message could have
- *                      been received or if the mailbox was empty.
- */
-K_ERR kAmboxRecvKeep(K_AMBOX* const kobj, ADDR const recvPtr);
-
-/**
- * \brief				Send to an asynchronous mailbox, overwriting the
- * 						current message.
- * \param kobj		    Asynch mailbox address.
- * \param sendPtr       Message address.
- * \param nMailSize     Message size.
- * \return				K_SUCCESS or an error in case sendPtr is NULL or
- * 						aMailSize is 0.
- */
-K_ERR kAmboxSendOvw(K_AMBOX *const kobj, ADDR const sendPtr, BYTE aMailSize);
-
-#endif
 
 /*******************************************************************************
  * PUMP-DROP QUEUE (CYCLIC ASYNCHRONOUS BUFFERS - CABs)

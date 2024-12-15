@@ -6,7 +6,7 @@
  ******************************************************************************
  *  Module              : Inter-task Synchronisation
  *  Depends on          : Scheduler
- *  Provides to         : All services
+ *  Provides to         : Message Passing, Appli
  *  Public API  	    : Yes
  *
  * 	In this unit:
@@ -139,7 +139,6 @@ VOID kEventWake(K_EVENT *kobj)
 		K_ERR err = kEventInit(kobj);
 		assert( !err);
 	}
-
 	SIZE sleepThreads = kobj->queue.size;
 	if (sleepThreads > 0)
 	{
@@ -172,7 +171,6 @@ UINT32 kEventQuery(K_EVENT *const kobj)
  ******************************************************************************/
 K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 {
-
 	K_CR_AREA
 	K_ENTER_CR
 	if (kobj == NULL)
@@ -190,8 +188,7 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 		K_EXIT_CR
 		return (K_ERROR);
 	}
-	kobj->init = TRUE
-	;
+	kobj->init = TRUE;
 	kobj->ownerPtr = NULL;
 	K_EXIT_CR
 	return (K_SUCCESS);
@@ -405,8 +402,13 @@ VOID kMutexLock(K_MUTEX* const kobj)
 
             kobj->ownerPtr->priority = runPtr->priority;
         }
+#if(K_DEF_MUTEX_ENQ==K_DEF_ENQ_FIFO)
+		kTCBQEnq(&kobj->queue, runPtr);
+#else
+		kTCBQEnqByPrio(&kobj->queue, runPtr);
+#endif
+		runPtr->status=BLOCKED;
         runPtr->pendingMutx = (K_MUTEX*) kobj;
-        kUnRun_( &kobj->queue, runPtr, BLOCKED);
         K_PEND_CTXTSWTCH
         K_EXIT_CR
         return;

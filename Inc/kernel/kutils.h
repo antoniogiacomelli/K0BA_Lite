@@ -22,7 +22,6 @@ SIZE kMemCpy(ADDR destPtr, ADDR const srcPtr, SIZE size);
 
 #if (CUSTOM_ENV == 1)
 extern UART_HandleTypeDef huart2;
-extern K_MUTEX printMutex;
 int _write(int file, char* ptr, int len);
 
 #endif
