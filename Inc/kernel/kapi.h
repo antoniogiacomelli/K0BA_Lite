@@ -233,51 +233,13 @@ SIZE kMboxGetSize(K_MBOX *const kobj);
 /******************************************************************************/
 #if (K_DEF_MESGQ == ON)
 
-/**
- * \brief  Initialise an indirect blocking message queue.
 
- * \param kobj          Pointer to the message queue kernel object.
- * \param mesgPoolPtr   Address of the allocated memory for the message
- *                      contents.
- * \param queueSize     Number of items the queue support before blocking full.
- * \param mesgSize      Size of each item/message.
- * \return              See ktypes.h
- */
-K_ERR kMesgQInit(K_MESGQ* const kobj, ADDR const mesgPoolPtr,
-        BYTE const queueSize, BYTE const mesgSize);
+K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR buffer, SIZE messageSize,
+		SIZE maxMessages);
+K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr);
+K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr);
+K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr);
 
-
-/**
- * \brief            Send a message to the queue. The contents will be copied
- *                   to a queue buffer.
- * \param kobj       Address of the queue kernel object.
- * \param mesgPtr    Address of the message to be sent. Beware the scope.
- * \param mesgSize   Size of the message - non-zero, up to the value you decla
- *                   red.
- * \return           See ktypes.h
- */
-K_ERR kMesgQSend(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
-
-
-/**
- * \brief              Receive a copy of a message from a queue.
- *
- * \param kobj         Message Queue address.
- * \param recvMesgPtr  Pointer to where the message will be copied.
- * \param senderTIDPtr Pointer to the variable to store the sender task id.
- * \return             See ktypes.h
- */
-K_ERR kMesgQRecv(K_MESGQ* const kobj, ADDR recvMesgPtr, TID* senderTIDPtr);
-
-/**
- * \brief                 Send a message copy to the queue front.
- * \param kobj            Message Queue address.
- * \param mesgPtr		  Message addr.
- * \param mesgSize        Size.
- * \return                See ktypes.h
- */
-
-K_ERR kMesgQJam(K_MESGQ* const kobj, ADDR const mesgPtr, BYTE const mesgSize);
 
 
 

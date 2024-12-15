@@ -91,7 +91,8 @@
 #define K_DEF_N_MESG                  (32)
 /*** Blocking send()				*/
 #define K_DEF_MESGQ_BLOCK_FULL        (ON)
-
+/*** Queue Discipline				*/
+#define K_DEF_MESGQ_ENQ	   (K_DEF_ENQ_PRIO)
 #endif /*mesgq*/
 #endif
 

@@ -188,7 +188,8 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 		K_EXIT_CR
 		return (K_ERROR);
 	}
-	kobj->init = TRUE;
+	kobj->init = TRUE
+	;
 	kobj->ownerPtr = NULL;
 	K_EXIT_CR
 	return (K_SUCCESS);
@@ -215,7 +216,7 @@ VOID kSemaWait(K_SEMA *const kobj)
 	kobj->value--;
 	DMB
 
-	if(kobj->value < 0)
+	if (kobj->value < 0)
 	{
 #if(K_DEF_SEMA_ENQ==K_DEF_ENQ_FIFO)
 		kTCBQEnq(&kobj->queue, runPtr);
@@ -239,10 +240,10 @@ VOID kSemaWait(K_SEMA *const kobj)
 
 	}
 	if (kobj->ownerPtr)
-			{
-				/* restore owner priority */
-				kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
-			}
+	{
+		/* restore owner priority */
+		kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
+	}
 	/*the task reaching this point is the sema owner*/
 	kobj->ownerPtr = runPtr;
 	K_EXIT_CR
@@ -347,167 +348,170 @@ K_ERR kSemaAttmpt(K_SEMA *const kobj, TICK nAttmpts)
 /*******************************************************************************
  * MUTEX
  *******************************************************************************/
-K_ERR kMutexInit(K_MUTEX* const kobj)
+K_ERR kMutexInit(K_MUTEX *const kobj)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-        K_EXIT_CR
-        return (K_ERROR);
-    }
-    kobj->lock = FALSE;
-    if (kTCBQInit( & (kobj->queue), "mutexQ") != K_SUCCESS)
-    {
-        K_EXIT_CR
-        kErrHandler(FAULT_LIST);
-        return (K_ERROR);
-    }
-    kobj->init = TRUE;
-    K_EXIT_CR
-    return (K_SUCCESS);
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+		K_EXIT_CR
+		return (K_ERROR);
+	}
+	kobj->lock = FALSE
+	;
+	if (kTCBQInit(&(kobj->queue), "mutexQ") != K_SUCCESS)
+	{
+		K_EXIT_CR
+		kErrHandler(FAULT_LIST);
+		return (K_ERROR);
+	}
+	kobj->init = TRUE
+	;
+	K_EXIT_CR
+	return (K_SUCCESS);
 }
-VOID kMutexLock(K_MUTEX* const kobj)
+VOID kMutexLock(K_MUTEX *const kobj)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    if (kobj->init == FALSE)
-    {
-        assert(0);
-    }
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
-    if (kIsISR())
-    {
-        kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-    }
-    if (kobj->lock == FALSE)
-    {
-        /* lock mutex and set the owner */
-        kobj->lock = TRUE;
-        kobj->ownerPtr = runPtr;
-        K_EXIT_CR
-    }
-    if ( (kobj->ownerPtr != runPtr) && (kobj->ownerPtr != NULL))
-    {
-        if (kobj->ownerPtr->priority > runPtr->priority)
-        {
-            /* mutex owner has lower priority than the tried-to-lock-task
-             * thus, we boost owner priority, to avoid an intermediate
-             * priority task that does not need lock to preempt
-             * this task, causing an unbounded delay */
+	K_CR_AREA
+	K_ENTER_CR
+	if (kobj->init == FALSE)
+	{
+		assert(0);
+	}
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
+	if (kIsISR())
+	{
+		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
+	}
+	if (kobj->lock == FALSE)
+	{
+		/* lock mutex and set the owner */
+		kobj->lock = TRUE;
+		kobj->ownerPtr = runPtr;
+		K_EXIT_CR
+	}
+	if ((kobj->ownerPtr != runPtr) && (kobj->ownerPtr != NULL))
+	{
+		if (kobj->ownerPtr->priority > runPtr->priority)
+		{
+			/* mutex owner has lower priority than the tried-to-lock-task
+			 * thus, we boost owner priority, to avoid an intermediate
+			 * priority task that does not need lock to preempt
+			 * this task, causing an unbounded delay */
 
-            kobj->ownerPtr->priority = runPtr->priority;
-        }
+			kobj->ownerPtr->priority = runPtr->priority;
+		}
 #if(K_DEF_MUTEX_ENQ==K_DEF_ENQ_FIFO)
 		kTCBQEnq(&kobj->queue, runPtr);
 #else
 		kTCBQEnqByPrio(&kobj->queue, runPtr);
 #endif
-		runPtr->status=BLOCKED;
-        runPtr->pendingMutx = (K_MUTEX*) kobj;
-        K_PEND_CTXTSWTCH
-        K_EXIT_CR
-        return;
-    }
-    K_EXIT_CR
+		runPtr->status = BLOCKED;
+		runPtr->pendingMutx = (K_MUTEX*) kobj;
+		K_PEND_CTXTSWTCH
+		K_EXIT_CR
+		return;
+	}
+	K_EXIT_CR
 }
 
-VOID kMutexUnlock(K_MUTEX* const kobj)
+VOID kMutexUnlock(K_MUTEX *const kobj)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    K_TCB* tcbPtr;
-    if (kobj == NULL)
-    {
-        kErrHandler(FAULT_NULL_OBJ);
-    }
-    if (kobj->init == FALSE)
-    {
-        assert(0);
-    }
-    if ( (kobj->lock == FALSE))
-    {
-        return;
-    }
-    if (kobj->ownerPtr != runPtr)
-    {
-        assert(FAULT_UNLOCK_OWNED_MUTEX);
-        K_EXIT_CR
-        return;
-    }
-    /* runPtr is the owner and mutex was locked */
-    if (kobj->queue.size == 0)  //no waiters
-    {
-        kobj->lock = FALSE;
-        kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
-        kobj->ownerPtr->pendingMutx = NULL;
-        tcbPtr = kobj->ownerPtr;
-        kobj->ownerPtr = NULL;
-    }
-    else
-    {
-        /*there are waiters, unblock a waiter set new mutex owner.
-         * mutex is still locked */
-        kTCBQDeq( & (kobj->queue), &tcbPtr);
-        if (IS_NULL_PTR(tcbPtr))
-            kErrHandler(FAULT_NULL_OBJ);
-        /* here only runptr can unlock a mutex*/
-        if (runPtr->priority < runPtr->realPrio)
-        {
-            runPtr->priority = runPtr->realPrio;
-        }
-        if ( !kReadyCtxtSwtch(tcbPtr))
-        {
-            kobj->ownerPtr = tcbPtr;
-            tcbPtr->pendingMutx = NULL;
-            K_EXIT_CR
-            return;
-        }
-        else
-        {
-            kErrHandler(FAULT_READY_QUEUE);
-        }
-    }
-    K_EXIT_CR
-    return;
+	K_CR_AREA
+	K_ENTER_CR
+	K_TCB *tcbPtr;
+	if (kobj == NULL)
+	{
+		kErrHandler(FAULT_NULL_OBJ);
+	}
+	if (kobj->init == FALSE)
+	{
+		assert(0);
+	}
+	if ( (kobj->lock == FALSE))
+	{
+		return;
+	}
+	if (kobj->ownerPtr != runPtr)
+	{
+		assert(FAULT_UNLOCK_OWNED_MUTEX);
+		K_EXIT_CR
+		return;
+	}
+	/* runPtr is the owner and mutex was locked */
+	if (kobj->queue.size == 0)  //no waiters
+	{
+		kobj->lock = FALSE
+		;
+		kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
+		kobj->ownerPtr->pendingMutx = NULL;
+		tcbPtr = kobj->ownerPtr;
+		kobj->ownerPtr = NULL;
+	}
+	else
+	{
+		/*there are waiters, unblock a waiter set new mutex owner.
+		 * mutex is still locked */
+		kTCBQDeq(&(kobj->queue), &tcbPtr);
+		if (IS_NULL_PTR(tcbPtr))
+			kErrHandler(FAULT_NULL_OBJ);
+		/* here only runptr can unlock a mutex*/
+		if (runPtr->priority < runPtr->realPrio)
+		{
+			runPtr->priority = runPtr->realPrio;
+		}
+		if (!kReadyCtxtSwtch(tcbPtr))
+		{
+			kobj->ownerPtr = tcbPtr;
+			tcbPtr->pendingMutx = NULL;
+			K_EXIT_CR
+			return;
+		}
+		else
+		{
+			kErrHandler(FAULT_READY_QUEUE);
+		}
+	}
+	K_EXIT_CR
+	return;
 }
 
-K_ERR kMutexQuery(K_MUTEX* const kobj)
+K_ERR kMutexQuery(K_MUTEX *const kobj)
 {
-    K_CR_AREA
-    K_ENTER_CR
-    K_ERR err = -1;
-    if (kobj == NULL)
-    {
-        err = (K_ERR_OBJ_NULL);
-        goto EXIT;
-    }
-    if (kobj->lock == TRUE)
-    {
-        err = (K_QUERY_MUTEX_LOCKED);
-        goto EXIT;
-    }
-    if (kobj->lock == FALSE)
-    {
-        err = (K_QUERY_MUTEX_UNLOCKED);
-        goto EXIT;
-    }
-    if (kobj->init == FALSE)
-    {
-        err = (K_ERR_OBJ_NOT_INIT);
-        goto EXIT;
-    }
-    if (err == -1)
-    {
-        err = (K_ERR_QUERY_UNDEFINED);
-    }
-    EXIT:
-    K_EXIT_CR
-    return (err);
+	K_CR_AREA
+	K_ENTER_CR
+	K_ERR err = -1;
+	if (kobj == NULL)
+	{
+		err = (K_ERR_OBJ_NULL);
+		goto EXIT;
+	}
+	if (kobj->lock == TRUE)
+	{
+		err = (K_QUERY_MUTEX_LOCKED);
+		goto EXIT;
+	}
+	if (kobj->lock == FALSE)
+	{
+		err = (K_QUERY_MUTEX_UNLOCKED);
+		goto EXIT;
+	}
+	if (kobj->init == FALSE)
+	{
+		err = (K_ERR_OBJ_NOT_INIT);
+		goto EXIT;
+	}
+	if (err == -1)
+	{
+		err = (K_ERR_QUERY_UNDEFINED);
+	}
+	EXIT:
+	K_EXIT_CR
+	return (err);
 }
 #endif /* mutex */
 

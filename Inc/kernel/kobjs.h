@@ -169,27 +169,23 @@ struct kMailbox
 
 #if ((K_DEF_MESGQ==ON))
 
-struct kMesg
-{
-    TID senderTid; /* Sender Task ID*/
-    ADDR mesgPtr; /* Pointer to message contents */
-    SIZE mesgSize; /* Mesg size */
-    struct kListNode mesgNode; /* Mesg Queue Node */
-} __attribute__((aligned));
-
-
+/* Multi-Message Mailbox Queue */
 struct kMesgQ
 {
-	struct kSema semaItem; /* Semaphore indicating a new message */
-#if (K_DEF_MESGQ_BLOCK_FULL==ON)
-	struct kSema semaRoom;
-#endif
-	struct kMemBlock mesgqMcb; /* Mem Ctrl Block of the associated mesg pool */
-	struct kList mesgqList;
-	BYTE   itemSize;
-	BOOL   init;
+    BOOL init;
+    K_MESGQ_STATUS state;
 
-};
+    K_TCB* owner;
+    struct kList waitingQueue;
+
+    SIZE mesgSize;
+    SIZE maxMesg;
+    SIZE mesgCnt;
+
+    BYTE* buffer;
+    SIZE readIndex;
+    SIZE writeIndex;
+} __attribute__((aligned(4)));
 
 #endif /*K_DEF_MSG_QUEUE*/
 
@@ -227,9 +223,9 @@ struct kTimer
 
 
 
+
+
 /*[EOF]*/
-
-
 #ifdef __cplusplus
 }
 #endif

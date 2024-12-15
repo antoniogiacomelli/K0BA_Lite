@@ -133,6 +133,25 @@ typedef struct kTcb TCB;
       }                                               \
   } while(0U)
 
+/* for the mesg queue, pointers are incremented altogether */
+#define CPYQ(d, s, z, r)                                \
+do {                                                    \
+    BYTE* __d = (BYTE*)(d);                             \
+    BYTE const* __s = (BYTE const*)(s);                 \
+    *(BYTE*)(__d)++ = *(BYTE const*)(__s)++;            \
+    (r)++;												\
+    SIZE __z = z;										\
+    if ((__z) > 1U) 										\
+	{                                     				\
+        while (--(__z)) 									\
+		{			                                    \
+            *(BYTE*)(__d)++ = *(BYTE const*)(__s)++;    \
+            (r)++;                                      \
+        }                                               \
+    }                                                   \
+} while (0U)
+
+
 #define K_GET_CONTAINER_ADDR(memberPtr, containerType, memberName) \
     ((containerType *)((unsigned char *)(memberPtr) - \
      offsetof(containerType, memberName)))

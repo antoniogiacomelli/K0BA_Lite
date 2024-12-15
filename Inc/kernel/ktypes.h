@@ -163,6 +163,13 @@ typedef enum
 
 typedef enum
 {
+    MESGQ_EMPTY 	=    0,
+	MESGQ_PARTIAL   =    1,
+    MESGQ_FULL		=    2
+}K_MESGQ_STATUS;
+
+typedef enum
+{
 	MAILBOX,
 	AMAILBOX,
 	MESGQUEUE,
@@ -202,17 +209,13 @@ typedef K_LIST K_TCBQ;
 #if (K_DEF_SEMA == ON)
 
     typedef struct kSema K_SEMA;
+#endif /*sema */
 
-    #if (K_DEF_MESGQ == ON)
+#if (K_DEF_MESGQ == ON)
 
-    typedef struct kMesg K_MESG;
     typedef struct kMesgQ K_MESGQ;
 
-    #endif /*mesgq*/
-#if (K_DEF_DMESG == ON)
-    typedef struct kDmesg K_DMESG;
-#endif
-#endif /*sema */
+#endif /*mesgq*/
 
 #if (K_DEF_MBOX == ON)
 
