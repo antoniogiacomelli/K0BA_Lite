@@ -8,7 +8,7 @@
  * 					o Private API: List ADT
  *
  *****************************************************************************
- This Linked List has a sentinel (dummy node), whose addres
+ This Linked List has a sentinel (dummy node), whose address
  is fixed on initialisation. Thus, every node in the list
  has an anchored reference, making it easier to handle edge
  cases.

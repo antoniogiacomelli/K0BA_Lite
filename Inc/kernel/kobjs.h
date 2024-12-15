@@ -49,6 +49,8 @@ struct kTcb
     BOOL runToCompl;      /* Cooperative-only task     */
 	TICK busyWaitTime;    /* Busy-Delay in ticks 	   */
     TICK   attmptCntr;      /* Trying to access CR 	   */
+    K_TCBQ* timeOutQueue;
+    BOOL   timeOut;
 /*--- RESOURCES-----------------------------------------*/
 #if (K_DEF_SEMA == ON)
     K_SEMA* pendingSema;
@@ -79,15 +81,33 @@ struct kRunTime
 	UINT32 nWraps; /* Number of tick wraps */
 };
 
+typedef enum
+{
+    TIMEOUT_MBOX,
+    TIMEOUT_SEMA,
+    TIMEOUT_MUTEX,
+    TIMEOUT_QUEUE
+} K_TIMEOUT_OBJ;
+
+
+typedef struct kTimeoutNode
+{
+    struct kTimeoutNode *nextPtr; /* Pointer to the next node in the timeout list */
+    TICK timeout;               /* Timeout counter */
+    ADDR kobj;         /* Pointer to the kernel object (e.g., semaphore, mailbox) */
+    K_TIMEOUT_OBJ objectType; /* Type of the kernel object */
+} K_TIMEOUT_NODE;
+
 
 #if (K_DEF_SEMA==ON)
 
 struct kSema
 {
 	INT32 value; /* Semaphore value */
-	struct kList queue; /* Semaphore waiting queue */
+	struct kList waitingQueue; /* Semaphore waiting queue */
     struct kTcb* ownerPtr; /* Task owning the mutex */
 	BOOL   init;
+	K_TIMEOUT_NODE timeoutNode;
 };
 #endif
 
@@ -95,10 +115,11 @@ struct kSema
 
 struct kMutex
 {
-	struct kList queue; /* Mutex waiting queue */
+	struct kList waitingQueue; /* Mutex waiting queue */
 	BOOL lock; /* 0=unlocked, 1=locked */
 	struct kTcb* ownerPtr; /* Task owning the mutex */
 	BOOL init; /* Init state */
+	K_TIMEOUT_NODE timeoutNode;
 };
 #endif
 
@@ -106,9 +127,11 @@ struct kMutex
 
 struct kEvent
 {
-	struct kList queue; /* Waiting queue */
+	struct kList waitingQueue; /* Waiting queue */
 	BOOL init; /* Init flag */
 	UINT32 eventID; /* event ID */
+	K_TIMEOUT_NODE timeoutNode;
+
 };
 
 #if (K_DEF_PIPE == ON) /* still within kdefsleepwake*/
@@ -123,6 +146,8 @@ struct kPipe
     struct kEvent evData; /* Cond Var for readers */
     BYTE buffer[K_DEF_PIPE_SIZE]; /* Data buffer */
     BOOL init;
+	K_TIMEOUT_NODE timeoutNode;
+
 };
 #endif /* K_DEF_PIPES */
 
@@ -163,6 +188,8 @@ struct kMailbox
     TID    senderTID;
     SIZE   mailSize;
     ADDR   mailPtr;
+    BOOL timedOut;
+	K_TIMEOUT_NODE timeoutNode;
 } __attribute__((aligned(4)));
 
 #endif
@@ -185,6 +212,7 @@ struct kMesgQ
     BYTE* buffer;
     SIZE readIndex;
     SIZE writeIndex;
+	K_TIMEOUT_NODE timeoutNode;
 } __attribute__((aligned(4)));
 
 #endif /*K_DEF_MSG_QUEUE*/
@@ -220,10 +248,6 @@ struct kTimer
 	K_TIMER* nextPtr; /* Next timer in the queue */
 	BOOL init;
 } __attribute__((aligned));
-
-
-
-
 
 /*[EOF]*/
 #ifdef __cplusplus

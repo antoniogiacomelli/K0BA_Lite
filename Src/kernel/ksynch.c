@@ -26,6 +26,7 @@
 #include "kmem.h"
 #include "kitc.h"
 #include "ksch.h"
+#include "ktimer.h"
 #include "kinternals.h"
 
 /*******************************************************************************
@@ -90,7 +91,7 @@ K_ERR kSuspend(TID const taskID)
 /******************************************************************************
  * SLEEP/WAKE ON EVENTS
  *******************************************************************************/
-VOID kEventSleep(K_EVENT *kobj)
+VOID kEventSleep(K_EVENT *kobj, TICK timeout)
 {
 	K_CR_AREA
 	K_ENTER_CR
@@ -113,7 +114,8 @@ VOID kEventSleep(K_EVENT *kobj)
 
 	if (kobj->init == TRUE)
 	{
-		K_ERR err = kUnRun_( &kobj->queue, runPtr, SLEEPING);
+		kTimeOut(&kobj->timeoutNode, timeout);
+		K_ERR err = kUnRun_( &kobj->waitingQueue, runPtr, SLEEPING);
 		assert( !err);
 		runPtr->pendingEv = kobj;
 		K_PEND_CTXTSWTCH
@@ -130,7 +132,7 @@ VOID kEventWake(K_EVENT *kobj)
 		kErrHandler(FAULT_NULL_OBJ);
 	}
 
-	if (kobj->queue.size == 0)
+	if (kobj->waitingQueue.size == 0)
 		return;
 	K_CR_AREA
 	K_ENTER_CR
@@ -139,13 +141,13 @@ VOID kEventWake(K_EVENT *kobj)
 		K_ERR err = kEventInit(kobj);
 		assert( !err);
 	}
-	SIZE sleepThreads = kobj->queue.size;
+	SIZE sleepThreads = kobj->waitingQueue.size;
 	if (sleepThreads > 0)
 	{
 		for (SIZE i = 0; i < sleepThreads; ++i)
 		{
 			K_TCB *nextTCBPtr;
-			kTCBQDeq(&kobj->queue, &nextTCBPtr);
+			kTCBQDeq(&kobj->waitingQueue, &nextTCBPtr);
 			assert(!kReadyCtxtSwtch(nextTCBPtr));
 			nextTCBPtr->pendingEv = NULL;
 		}
@@ -160,7 +162,7 @@ UINT32 kEventQuery(K_EVENT *const kobj)
 	{
 		kErrHandler(FAULT_NULL_OBJ);
 	}
-	return (kobj->queue.size);
+	return (kobj->waitingQueue.size);
 }
 
 #endif
@@ -182,20 +184,24 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 	if (value < 0)
 		kErrHandler(FAULT);
 	kobj->value = value;
-	if (kTCBQInit(&(kobj->queue), "semaQ") != K_SUCCESS)
+	if (kTCBQInit(&(kobj->waitingQueue), "semaQ") != K_SUCCESS)
 	{
 		kErrHandler(FAULT_LIST);
 		K_EXIT_CR
 		return (K_ERROR);
 	}
-	kobj->init = TRUE
-	;
+	kobj->init = TRUE;
 	kobj->ownerPtr = NULL;
+	/* Initialize the embedded timeout node */
+	kobj->timeoutNode.nextPtr = NULL;
+	kobj->timeoutNode.timeout = 0;
+	kobj->timeoutNode.kobj = kobj;
+	kobj->timeoutNode.objectType = TIMEOUT_SEMA;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
 
-VOID kSemaWait(K_SEMA *const kobj)
+K_ERR kSemaWait(K_SEMA *const kobj, TICK const timeout)
 {
 	if (kIsISR())
 	{
@@ -219,13 +225,15 @@ VOID kSemaWait(K_SEMA *const kobj)
 	if (kobj->value < 0)
 	{
 #if(K_DEF_SEMA_ENQ==K_DEF_ENQ_FIFO)
-		kTCBQEnq(&kobj->queue, runPtr);
+		kTCBQEnq(&kobj->waitingQueue, runPtr);
 #else
-		kTCBQEnqByPrio(&kobj->queue, runPtr);
+		kTCBQEnqByPrio(&kobj->waitingQueue, runPtr);
 #endif
 		runPtr->status = BLOCKED;
 		runPtr->pendingSema = kobj;
 		DMB
+
+		kTimeOut(&kobj->timeoutNode, timeout);
 		if (kobj->ownerPtr)
 		{
 			if (runPtr->priority < kobj->ownerPtr->priority)
@@ -235,9 +243,14 @@ VOID kSemaWait(K_SEMA *const kobj)
 		}
 		K_PEND_CTXTSWTCH
 		K_EXIT_CR
-		/* waiting task gains access by resuming here */
 		K_ENTER_CR
-
+		if (runPtr->timeOut)
+		{
+			runPtr->timeOut = FALSE;
+			kobj->value += 1;
+			K_EXIT_CR
+			return (K_ERR_TIMEOUT);
+		}
 	}
 	if (kobj->ownerPtr)
 	{
@@ -247,7 +260,7 @@ VOID kSemaWait(K_SEMA *const kobj)
 	/*the task reaching this point is the sema owner*/
 	kobj->ownerPtr = runPtr;
 	K_EXIT_CR
-	return;
+	return (K_SUCCESS);
 }
 
 VOID kSemaSignal(K_SEMA *const kobj)
@@ -269,7 +282,7 @@ VOID kSemaSignal(K_SEMA *const kobj)
 	if ((kobj->value) <= 0)
 	{
 		/* if here, the semaphore has sleeping tasks            */
-		K_ERR err = kTCBQDeq(&(kobj->queue), &nextTCBPtr);
+		K_ERR err = kTCBQDeq(&(kobj->waitingQueue), &nextTCBPtr);
 		assert(!err);
 		assert(nextTCBPtr != NULL);
 		nextTCBPtr->pendingSema = NULL;
@@ -298,50 +311,6 @@ INT32 kSemaQuery(K_SEMA *const kobj)
 	return (kobj->value);
 }
 
-K_ERR kSemaAttmpt(K_SEMA *const kobj, TICK nAttmpts)
-{
-	K_CR_AREA
-	if (kIsISR())
-	{
-		kErrHandler(FAULT_ISR_INVALID_PRIMITVE);
-	}
-	if (kobj->init == FALSE)
-	{
-		kErrHandler(FAULT_OBJ_NOT_INIT);
-	}
-	if (kobj == NULL)
-	{
-		kErrHandler(FAULT_NULL_OBJ);
-	}
-	K_ENTER_CR
-	if ((kobj->value - 1) < 0)
-	{
-		runPtr->attmptCntr = nAttmpts;
-		DMB
-		goto TRY;
-	}
-	WAIT:
-
-	kSemaWait(kobj);
-	K_EXIT_CR
-	return (K_SUCCESS);
-
-	TRY:
-
-	kUnRun_(&sleepingQueue, runPtr, ATTEMPTING);
-	K_EXIT_CR
-	/*wake here*/
-	K_ENTER_CR
-	if ((kobj->value - 1) < 0)
-	{
-		if (runPtr->attmptCntr > 0)
-			goto TRY;
-
-		K_EXIT_CR
-		return (K_ERR_ATTMPT_TIMEOUT);
-	}
-	goto WAIT;
-}
 #endif /*sema*/
 
 #if (K_DEF_MUTEX == ON)
@@ -358,20 +327,23 @@ K_ERR kMutexInit(K_MUTEX *const kobj)
 		K_EXIT_CR
 		return (K_ERROR);
 	}
-	kobj->lock = FALSE
-	;
-	if (kTCBQInit(&(kobj->queue), "mutexQ") != K_SUCCESS)
+	kobj->lock = FALSE;
+	if (kTCBQInit(&(kobj->waitingQueue), "mutexQ") != K_SUCCESS)
 	{
 		K_EXIT_CR
 		kErrHandler(FAULT_LIST);
 		return (K_ERROR);
 	}
-	kobj->init = TRUE
-	;
+	kobj->init = TRUE;
+	kobj->timeoutNode.nextPtr = NULL;
+	kobj->timeoutNode.timeout = 0;
+	kobj->timeoutNode.kobj = kobj;
+	kobj->timeoutNode.objectType = TIMEOUT_MUTEX;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
-VOID kMutexLock(K_MUTEX *const kobj)
+
+K_ERR kMutexLock(K_MUTEX *const kobj, TICK timeout)
 {
 	K_CR_AREA
 	K_ENTER_CR
@@ -406,17 +378,27 @@ VOID kMutexLock(K_MUTEX *const kobj)
 			kobj->ownerPtr->priority = runPtr->priority;
 		}
 #if(K_DEF_MUTEX_ENQ==K_DEF_ENQ_FIFO)
-		kTCBQEnq(&kobj->queue, runPtr);
+		kTCBQEnq(&kobj->waitingQueue, runPtr);
 #else
-		kTCBQEnqByPrio(&kobj->queue, runPtr);
+		kTCBQEnqByPrio(&kobj->waitingQueue, runPtr);
 #endif
+		if (timeout > 0)
+			kTimeOut(&kobj->timeoutNode, timeout);
 		runPtr->status = BLOCKED;
 		runPtr->pendingMutx = (K_MUTEX*) kobj;
 		K_PEND_CTXTSWTCH
 		K_EXIT_CR
-		return;
+		K_ENTER_CR
+		if (runPtr->timeOut)
+		{
+			runPtr->timeOut = FALSE;
+			K_EXIT_CR
+			return (K_ERR_TIMEOUT);
+		}
 	}
+
 	K_EXIT_CR
+	return (K_SUCCESS);
 }
 
 VOID kMutexUnlock(K_MUTEX *const kobj)
@@ -432,7 +414,7 @@ VOID kMutexUnlock(K_MUTEX *const kobj)
 	{
 		assert(0);
 	}
-	if ( (kobj->lock == FALSE))
+	if ((kobj->lock == FALSE))
 	{
 		return;
 	}
@@ -443,7 +425,7 @@ VOID kMutexUnlock(K_MUTEX *const kobj)
 		return;
 	}
 	/* runPtr is the owner and mutex was locked */
-	if (kobj->queue.size == 0)  //no waiters
+	if (kobj->waitingQueue.size == 0)
 	{
 		kobj->lock = FALSE
 		;
@@ -456,7 +438,7 @@ VOID kMutexUnlock(K_MUTEX *const kobj)
 	{
 		/*there are waiters, unblock a waiter set new mutex owner.
 		 * mutex is still locked */
-		kTCBQDeq(&(kobj->queue), &tcbPtr);
+		kTCBQDeq(&(kobj->waitingQueue), &tcbPtr);
 		if (IS_NULL_PTR(tcbPtr))
 			kErrHandler(FAULT_NULL_OBJ);
 		/* here only runptr can unlock a mutex*/

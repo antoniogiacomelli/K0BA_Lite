@@ -43,7 +43,7 @@
 /*** [Number of user-defined tasks] *******************************************/
 #define K_DEF_N_USRTASKS    	     (3)
 
-/*** The lowest effective priority, that is the highest user-defined value    */
+/*** [The lowest effective priority, that is the highest user-defined value]  */
 #define K_DEF_MIN_PRIO	           	 (3)
 
 
@@ -70,12 +70,12 @@
 #define K_DEF_MUTEX_ENQ				  (K_DEF_ENQ_PRIO)
 
 /*** [Sleep/Wake Events] *******************************************************/
-#define K_DEF_SLEEPWAKE               (OFF)
+#define K_DEF_SLEEPWAKE               (ON)
 
 /*** [Pipes] ******************************************************************/
 #if (K_DEF_SLEEPWAKE==ON)
 
-#define K_DEF_PIPE                    (OFF)
+#define K_DEF_PIPE                    (ON)
 #define K_DEF_PIPE_SIZE               (32)
 
 #endif
@@ -97,10 +97,10 @@
 #endif
 
 /*** [Mailbox] ****************************************************************/
-
 #define K_DEF_MBOX	                  (ON)
-/* Synchronous mailbox */
+
 #define K_DEF_SYNCH_MBOX			  (ON)
+
 /* Enable asynchronous methods */
 #define K_DEF_AMBOX                   (OFF)
 
@@ -111,7 +111,6 @@
 #define K_DEF_MBOX_ENQ       (K_DEF_ENQ_PRIO)
 
 #endif
-
 
 /*** [Pump-Drop Queues] *******************************************************/
 

@@ -114,10 +114,11 @@ VOID kYield(VOID);
 K_ERR kSemaInit(K_SEMA* const kobj, INT32 const value);
 
 /**
- *\brief Wait on a semaphore
- *\param kobj Semaphore address
+ *\brief 			Wait on a semaphore
+ *\param kobj 		Semaphore address
+ *\param timeout	Maximum suspension time
  */
-VOID kSemaWait(K_SEMA* const kobj);
+VOID kSemaWait(K_SEMA* const kobj, TICK const timeout);
 
 /**
  *\brief Signal a semaphore
@@ -125,13 +126,8 @@ VOID kSemaWait(K_SEMA* const kobj);
  */
 VOID kSemaSignal(K_SEMA* const kobj);
 
-/**
- * \brief           Tries to acquire a semaphore for N ticks
- *
- * \param kobj      Semaphore object
- * \param nAttmpts  Number of ticks
- * \return          K_SUCCESS or K_ERR_ATTMPT_TIMEOUT
- */
+
+
 K_ERR kSemaAttmpt(K_SEMA* const kobj, TICK nAttmpts);
 /**
  * \brief           Returns the semaphore counter value
@@ -155,11 +151,12 @@ INT32 kSemaQuery(K_SEMA* const kobj);
 K_ERR kMutexInit(K_MUTEX* const kobj);
 
 /**
- *\brief Lock a mutex
- *\param kobj mutex address
+ *\brief Lock 		a mutex
+ *\param kobj 		mutex address
+ *\param timeout	Maximum suspension time
  *\return K_SUCCESS or a specific error \see ktypes.h
  */
-VOID kMutexLock(K_MUTEX* const kobj);
+K_ERR kMutexLock(K_MUTEX* const kobj, TICK timeout);
 
 /**
  *\brief Unlock a mutex
@@ -202,18 +199,21 @@ K_ERR kMboxName(K_MBOX *const kobj, TID id);
  * \brief               Send to a mailbox. Task blocks when full.
  * \param kobj          Mailbox address.
  * \param sendPtr       Mail address.
+ * \param timeout		Suspension time-out
  * \return              K_SUCCESS or specific error.
  */
-K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr);
+K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout);
 /**
  * \brief               Receive from a mailbox. Block if empty.
  *
  * \param kobj          Mailbox address.
  * \param recvPtr       Message destination address.
  * \param senderIDPtr	Address to store the sender ID.
+ * \param timeout		Suspension time-out
  * \return				K_SUCCESS or specific error.
  */
-K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID* senderIDPtr);
+K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID* senderIDPtr,
+		TICK timeout);
 
 /**
  * \brief       		Return status of a mailbox: full, empty.
@@ -232,13 +232,32 @@ SIZE kMboxGetSize(K_MBOX *const kobj);
 /* MESSAGE QUEUE                                                              */
 /******************************************************************************/
 #if (K_DEF_MESGQ == ON)
-
-
+/*
+ *\brief 			Initialise a Indirect Blocking Message Queue
+ *\param kobj		Queue address
+ *\param buffer		Allocated memory. It must be enough for the queue capacity
+ *\					that is messsageSize*maxMessages
+ *\param messageSize Message size
+ *\param maxMessage  Max number of messages
+ *\param 			 K_SUCCESS or specific errors
+ */
 K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR buffer, SIZE messageSize,
 		SIZE maxMessages);
-K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr);
-K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr);
-K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr);
+
+/*
+ *\brief 			Sends a message to the queue front.
+ *\param kobj		Queue address
+ *\param sendPtr	Source address
+ *\return			K_SUCCESS or specific error
+ */
+K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
+
+/*
+ *\brief 			Receive a message from the queue
+ *\brief
+ */
+K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK timeout);
+K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
 
 
 
@@ -380,10 +399,11 @@ VOID kSignal(PID const taskID);
 #if (K_DEF_SLEEPWAKE==ON)
 
 /**
- * \brief Suspends a task waiting for a specific event
- * \param kobj Pointer to a K_EVENT object
+ * \brief 			Suspends a task waiting for a specific event
+ * \param kobj 		Pointer to a K_EVENT object
+ * \param timeout	Suspension time. (0 is is FOREVER)
  */
-VOID kEventSleep(K_EVENT* const kobj);
+VOID kEventSleep(K_EVENT* const kobj, TICK timeout);
 
 /**
  * \brief Wakes a task waiting for a specific event
@@ -499,6 +519,8 @@ unsigned int kGetVersion(void);
  */
 SIZE kMemCpy(ADDR destPtr, ADDR const srcPtr, SIZE size);
 
+
+/* 				*				*				*				*			  */
 
 /*
  * brief Macro for unused variables

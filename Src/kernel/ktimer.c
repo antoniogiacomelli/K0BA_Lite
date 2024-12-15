@@ -13,6 +13,7 @@
  *			o Timer Handler
  *			o Sleep delay
  *			o Busy-wait delay
+ *			o Time-out for blocking mechanisms
  *
  *****************************************************************************/
 
@@ -28,35 +29,40 @@
 #include "ktimer.h"
 
 K_MEM timerMem;
-K_TIMER* dTimReloadList = NULL; /* periodic timers */
-K_TIMER* dTimOneShotList = NULL; /* reload	  timers */
-K_TIMER* dTimSleepList = NULL;
+K_TIMER *dTimReloadList = NULL; /* periodic timers */
+K_TIMER *dTimOneShotList = NULL; /* reload	  timers */
+K_TIMER *dTimSleepList = NULL;
 K_TIMER timerPool[K_DEF_N_TIMERS];
+
+
+K_TIMEOUT_NODE* timeOutListHeadPtr = NULL;
+
 static BOOL timerPoolInit = FALSE;
 
-static K_ERR kTimerListAdd_(K_TIMER** dTimList, STRING timerName,
+static K_ERR kTimerListAdd_(K_TIMER **dTimList, STRING timerName,
 		TICK tickCount, CALLOUT funPtr, ADDR argsPtr, BOOL reload);
 static inline void kTimerPoolInit_(VOID)
 {
-	if ( !timerPoolInit)
+	if (!timerPoolInit)
 	{
-		kMemInit( &timerMem, (BYTE*) timerPool, TIMER_SIZE,
+		kMemInit(&timerMem, (BYTE*) timerPool, TIMER_SIZE,
 				K_DEF_N_TIMERS);
-		timerPoolInit = TRUE;
+		timerPoolInit = TRUE
+				;
 	}
 }
 K_TIMER* kTimerGet(VOID)
 {
 
-	K_TIMER* retValPtr;
-	retValPtr = (K_TIMER*) kMemAlloc( &timerMem);
+	K_TIMER *retValPtr;
+	retValPtr = (K_TIMER*) kMemAlloc(&timerMem);
 	return (retValPtr);
 }
 
-K_ERR kTimerPut(K_TIMER* const kobj)
+K_ERR kTimerPut(K_TIMER *const kobj)
 {
 
-	if (kMemFree( &timerMem, (ADDR) kobj) == 0)
+	if (kMemFree(&timerMem, (ADDR) kobj) == 0)
 	{
 		return (K_SUCCESS);
 	}
@@ -86,11 +92,11 @@ K_ERR kTimerInit(STRING timerName, TICK ticks, CALLOUT funPtr, ADDR argsPtr,
 	}
 }
 
-static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
+static K_ERR kTimerListAdd_(K_TIMER **selfPtr, STRING timerName, TICK ticks,
 		CALLOUT funPtr, ADDR argsPtr, BOOL reload)
 {
 	kTimerPoolInit_();
-	K_TIMER* newTimerPtr = kTimerGet();
+	K_TIMER *newTimerPtr = kTimerGet();
 	if (newTimerPtr == NULL)
 	{
 		return (K_ERROR);
@@ -102,17 +108,17 @@ static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
 	newTimerPtr->argsPtr = argsPtr;
 	newTimerPtr->reload = reload;
 
-	if ( *selfPtr == NULL)
+	if (*selfPtr == NULL)
 	{
 
 		*selfPtr = newTimerPtr;
 		return (K_SUCCESS);
 	}
-	K_TIMER* currListPtr = *selfPtr;
-	K_TIMER* prevListPtr = NULL;
+	K_TIMER *currListPtr = *selfPtr;
+	K_TIMER *prevListPtr = NULL;
 
 	/* traverse the delta list to find the correct position based on relative
-	 time*/
+ time*/
 	while (currListPtr != NULL && currListPtr->dTicks < newTimerPtr->dTicks)
 	{
 		newTimerPtr->dTicks -= currListPtr->dTicks;
@@ -138,22 +144,27 @@ static K_ERR kTimerListAdd_(K_TIMER** selfPtr, STRING timerName, TICK ticks,
 	}
 	return (K_SUCCESS);
 }
-static K_TIMER timReloadCpy = {0};
+static K_TIMER timReloadCpy =
+{ 0 };
 BOOL kTimerHandler(void)
 {
-	BOOL ret=FALSE;
+	BOOL ret = FALSE
+			;
 	if (dTimOneShotList)
 	{
-		if (dTimOneShotList->dTicks > 0) dTimOneShotList->dTicks --;
+		if (dTimOneShotList->dTicks > 0)
+			dTimOneShotList->dTicks--;
 	}
 	if (dTimReloadList)
 	{
-		if (dTimReloadList->dTicks > 0) dTimReloadList->dTicks --;
+		if (dTimReloadList->dTicks > 0)
+			dTimReloadList->dTicks--;
 	}
 	while (dTimOneShotList != NULL && dTimOneShotList->dTicks == 0)
 	{
-		ret=TRUE;
-				K_TIMER* expTimerPtr = dTimOneShotList;
+		ret = TRUE
+				;
+		K_TIMER *expTimerPtr = dTimOneShotList;
 		/* ... as long there is that tick, tick...*/
 		expTimerPtr = dTimOneShotList;
 		/* ... followed by that bump: */
@@ -162,15 +173,15 @@ BOOL kTimerHandler(void)
 		dTimOneShotList = dTimOneShotList->nextPtr;
 	}
 
-	K_TIMER* putRelTimerPtr = NULL;
+	K_TIMER *putRelTimerPtr = NULL;
 	while (dTimReloadList->dTicks == 0 && dTimReloadList)
 	{
 		putRelTimerPtr = dTimReloadList;
-		kMemCpy( &timReloadCpy, dTimReloadList, TIMER_SIZE);
+		kMemCpy(&timReloadCpy, dTimReloadList, TIMER_SIZE);
 		kTimerPut(putRelTimerPtr);
 		dTimReloadList->funPtr(dTimReloadList->argsPtr);
 		dTimReloadList = dTimReloadList->nextPtr;
-		K_TIMER* insTimPtr = &timReloadCpy;
+		K_TIMER *insTimPtr = &timReloadCpy;
 		kTimerInit(insTimPtr->timerName, insTimPtr->ticks, insTimPtr->funPtr,
 				insTimPtr->argsPtr, insTimPtr->reload);
 		if (dTimReloadList == NULL)
@@ -196,11 +207,11 @@ void kSleep(TICK ticks)
 
 	K_ENTER_CR
 
-	if ( !kTimerListAdd_( &dTimSleepList, "SleepTimer", ticks, NULL,
-			(K_TCB*) runPtr, ONESHOT))
+	if (!kTimerListAdd_(&dTimSleepList, "SleepTimer", ticks, NULL, (K_TCB*) runPtr,
+			ONESHOT))
 	{
 
-		if ( !kTCBQEnq( &sleepingQueue, runPtr))
+		if (!kTCBQEnq(&sleepingQueue, runPtr))
 		{
 			runPtr->status = SLEEPING;
 			runPtr->pendingTmr = (K_TIMER*) (dTimSleepList);
@@ -228,3 +239,139 @@ TICK kTickGet(void)
 {
 	return (runTime.globalTick);
 }
+
+/******************************************************************************/
+/* BLOCKING TIME-OUT HANDLING												  */
+/******************************************************************************/
+
+/* Add a kernel object to the timeout list */
+VOID kTimeOut(K_TIMEOUT_NODE *timeOutNode, TICK timeout)
+{
+	if (timeout==0)
+		return;
+	timeOutNode->timeout = timeout;
+
+	/* Add the timeout node to the head of the timeout list */
+	timeOutNode->nextPtr = timeOutListHeadPtr;
+	timeOutListHeadPtr = timeOutNode;
+}
+
+/* Handler traverses the list and process each object accordinly */
+
+VOID kRemoveTaskFromMbox(ADDR kobj)
+{
+    K_MBOX *mboxPtr = (K_MBOX *)kobj;
+
+    if (mboxPtr->waitingQueue.size > 0)
+    {
+        K_TCB *taskPtr;
+        kTCBQDeq(&mboxPtr->waitingQueue, &taskPtr);
+
+        taskPtr->status = READY;
+        taskPtr->timeOut = TRUE;
+
+        kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+        taskPtr->status=READY;
+    }
+}
+
+void kRemoveTaskFromSema(void *kobj)
+{
+    K_SEMA *semaPtr = (K_SEMA *)kobj;
+
+    if (semaPtr->waitingQueue.size > 0)
+    {
+        K_TCB *taskPtr;
+        kTCBQDeq(&semaPtr->waitingQueue, &taskPtr);
+
+        taskPtr->status = READY;
+        taskPtr->timeOut = TRUE;
+
+        kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+    }
+}
+
+
+VOID kRemoveTaskFromMutex(ADDR kobj)
+{
+    K_MUTEX *mutexPtr = (K_MUTEX *)kobj;
+
+    if (mutexPtr->waitingQueue.size > 0)
+    {
+        K_TCB *taskPtr;
+        kTCBQDeq(&mutexPtr->waitingQueue, &taskPtr);
+
+        taskPtr->status = READY;
+        taskPtr->timeOut = TRUE;
+
+        kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+        taskPtr->status=READY;
+
+    }
+}
+
+VOID kRemoveTaskFromQueue(ADDR kobj)
+{
+    K_MESGQ *queuePtr = (K_MESGQ *)kobj;
+
+    if (queuePtr->waitingQueue.size > 0)
+    {
+        K_TCB *taskPtr;
+        kTCBQDeq(&queuePtr->waitingQueue, &taskPtr);
+
+        taskPtr->status = READY;
+        taskPtr->timeOut = TRUE;
+
+        kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+        taskPtr->status=READY;
+    }
+}
+
+
+VOID kHandleTimeoutList(void)
+{
+	K_TIMEOUT_NODE **currentPtr = &timeOutListHeadPtr;
+
+	while (*currentPtr != NULL)
+	{
+		K_TIMEOUT_NODE *node = *currentPtr;
+
+		if (node->timeout > 0)
+		{
+			node->timeout--;
+		}
+
+		/* expired? */
+		if (node->timeout == 0)
+		{
+			/* rem the node from the timeout list */
+			*currentPtr = node->nextPtr;
+
+			/* Handle the timeout for the associated kernel object */
+			switch (node->objectType)
+			{
+			case TIMEOUT_MBOX:
+				kRemoveTaskFromMbox(node->kobj);
+				break;
+			case TIMEOUT_SEMA:
+				kRemoveTaskFromSema(node->kobj);
+				break;
+			case TIMEOUT_MUTEX:
+				kRemoveTaskFromMutex(node->kobj);
+				break;
+			case TIMEOUT_QUEUE:
+				kRemoveTaskFromQueue(node->kobj);
+				break;
+			default:
+				KFAULT(FAULT);
+				break;
+			}
+		}
+		else
+		{
+			/* Move to the next node */
+			currentPtr = &node->nextPtr;
+		}
+	}
+}
+

@@ -180,7 +180,11 @@ do {                                                    \
 #define TOSTRING(x) STRINGIFY(x)
 #define IS_INIT(obj) (obj)->init) ? (1) : (0)
 #define DEADCODE (0)
-
+#define K_RUNNING_TID			(runPtr->uPid)
+#define K_RUNNING_PRIO			(runPtr->priority)
+#define K_RUNNING_PID			(runPtr->pid)
+#define K_RUNNING_STATUS		(runPtr->status)
+#define K_RUNNING_TIMEOUT
 
 __STATIC_FORCEINLINE unsigned kIsISR()
 {
@@ -204,7 +208,7 @@ __STATIC_FORCEINLINE unsigned kIsISR()
  *      `.´
  *      '
  *     .
- *********************************************************************************/
+ ******************************************************************************/
 
 #ifdef __cplusplus
 }

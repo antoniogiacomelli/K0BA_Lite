@@ -34,7 +34,6 @@ K_TCBQ sleepingQueue;
 K_TCBQ attmptQueue;
 K_TCB *runPtr;
 K_TCB tcbs[NTHREADS];
-volatile UINT32 nestedInterrupt;
 volatile struct kRunTime runTime;
 
 /* local globals  */
@@ -334,8 +333,7 @@ K_ERR kCreateTask(TASKENTRY const taskFuncPtr, STRING taskName, TID const id,
 
 		/* initialise TIMER HANDLER TASK */
 		assert(
-				kInitTcb_(TimerHandlerTask, timerHandlerStack,\
-						TIMHANDLER_STACKSIZE) == K_SUCCESS);
+				kInitTcb_(TimerHandlerTask, timerHandlerStack, TIMHANDLER_STACKSIZE) == K_SUCCESS);
 
 		tcbs[pPid].priority = 0;
 		tcbs[pPid].realPrio = 0;
@@ -449,12 +447,10 @@ static K_ERR kInitQueues_(void)
 		err |= kTCBQInit(&readyQueue[prio], "ReadyQ");
 	}
 	err |= kTCBQInit(&sleepingQueue, "SleepQ");
-	err |= kTCBQInit(&attmptQueue, "SleepQ");
-
+	err |= kTCBQInit(&attmptQueue, "attmptQ");
 	assert(err == 0);
 	return (err);
 }
-
 
 void kInit(void)
 {
@@ -533,10 +529,7 @@ static BOOL kSleepHandle_(VOID)
 		while (dTimSleepList != NULL && dTimSleepList->dTicks == 0)
 		{
 			ret = TRUE;
-			K_TIMER *expTimerPtr = dTimOneShotList;
-			/* ... as long there is that tick, tick...*/
-			expTimerPtr = dTimOneShotList;
-			/* ... followed by that bump: */
+			K_TIMER *expTimerPtr = dTimSleepList;
 			K_TCB *tcbToWakePtr = NULL;
 			tcbToWakePtr = (K_TCB*) (dTimSleepList->argsPtr);
 			if (tcbToWakePtr->status == SLEEPING)
@@ -553,6 +546,7 @@ static BOOL kSleepHandle_(VOID)
 	return (ret);
 
 }
+
 BOOL kTickHandler(void)
 {
 	/* return is short-circuit to !runToCompl & */
@@ -562,6 +556,7 @@ BOOL kTickHandler(void)
 #endif
 	BOOL readyAttmptTask = FALSE;
 	BOOL readySleepTask = FALSE;
+	BOOL timeOutTask = FALSE;
 	BOOL ret = FALSE;
 	runTime.globalTick += 1U;
 	if (runPtr->busyWaitTime > 0)
@@ -578,22 +573,10 @@ BOOL kTickHandler(void)
 	{
 		readySleepTask = kSleepHandle_();
 	}
-	/* nuts: attempt queue management */
-	if (attmptQueue.size > 0)
-	{
-		K_LISTNODE *attmptNodePtr = attmptQueue.listDummy.nextPtr;
-		K_TCB *attmptHeadPtr = K_LIST_GET_TCB_NODE(attmptNodePtr, K_TCB);
-		do
-		{
-			attmptHeadPtr = K_LIST_GET_TCB_NODE(attmptNodePtr, K_TCB);
-			if (attmptHeadPtr->attmptCntr > 0)
-			{
-				attmptHeadPtr->attmptCntr -= 1U;
-			}
-			kSignalAttmpt_(attmptHeadPtr->pid);
-			readyAttmptTask = TRUE;
-		} while ((attmptQueue.size > 0));
-	}
+
+	/* handle time out list */
+	kHandleTimeoutList();
+
 	/* a run-to-completion task is a first-class citizen not prone to tick
 	 truculence.*/
 	if (runPtr->runToCompl && (runPtr->status == RUNNING))
@@ -611,6 +594,7 @@ BOOL kTickHandler(void)
 			kReadyRunningTask_();
 		}
 	}
+
 	/* if time-slice is enabled, decrease the time-slice. */
 #if (K_DEF_SCH_TSLICE==ON)
     tsliceDue = kDecTimeSlice_();
@@ -633,8 +617,10 @@ BOOL kTickHandler(void)
 		kReadyRunningTask_();
 	}
 #endif
-	ret = (!runToCompl) & ((runPtr->status == READY) | readyAttmptTask
-			| readySleepTask);
+
+	ret = (!runToCompl)
+			& ((runPtr->status == READY) | readyAttmptTask | readySleepTask
+					| timeOutTask);
 	return (ret);
 }
 

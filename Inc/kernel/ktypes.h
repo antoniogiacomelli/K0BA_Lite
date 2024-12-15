@@ -105,8 +105,10 @@ typedef enum kErr
     K_ERR_INVALID_PRIO 			= (int)0xFFFFFFEF, /* Valid task priority range: 0-31. */
     K_ERR_MUTEX_NOT_LOCKED 		= (int)0xFFFFFFEE, /* Tried to lock an unlocked mutex */
     K_ERR_MUTEX_NOT_OWNER 		= (int)0xFFFFFFED, /* Tried to unlock an owned mutex */
+	/* gap  */
     K_ERR_RESERVED 				= (int)0xFFFFFFE8, /* 'reserved' often is used so design mistakes seem upcoming features */
-    K_ERR_MESG_CPY 				= (int)0xFFFFFFE5, /* Failure when copying (recv/send) mesg/mail */
+    /* gap */
+	K_ERR_MESG_CPY 				= (int)0xFFFFFFE5, /* Failure when copying (recv/send) mesg/mail */
     K_ERR_PDBUF_SIZE 			= (int)0xFFFFFFE4, /* Invalid size of mesg attached to a PD Buffer */
     K_ERR_SEM_INVALID_VAL 		= (int)0xFFFFFFE3, /* Invalid semaphore value */
     K_ERR_QUERY_UNDEFINED 		= (int)0xFFFFFFE2, /* Undefined query state for a kobj */
@@ -119,8 +121,9 @@ typedef enum kErr
 	K_ERR_NAMED_MBOX_RECV		= (int)0xFFFFFFD6, /* a named mbox can only accept recv its assigned task */
 	K_ERR_MBOX_EMPTY			= (int)0xFFFFFFD5,  /* isr read from an empty mailbox */
 	K_ERR_MBOX_FULL				= (int)0xFFFFFFD4,
-	K_ERR_MBOX_SIZE				= (int)0xFFFFFFE3,
-	K_ERR_MBOX_ISR				= (int)0xFFFFFFE2,
+	K_ERR_MBOX_SIZE				= (int)0xFFFFFFC3,
+	K_ERR_MBOX_ISR				= (int)0xFFFFFFC2,
+	K_ERR_TIMEOUT				= (int)0xFFFFFFC1
 
 } K_ERR;
 
