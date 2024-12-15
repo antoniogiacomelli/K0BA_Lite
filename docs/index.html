@@ -1290,7 +1290,7 @@ The overhead is excessive—both in time and space—a need to reserve a space o
 <p>Any mechanism allowing that end up on leaving the message scope to be managed by the user task - what is not only anti-modular; it deviates from K0BA guideline for what can be a service.</p>
 </div>
 <div class="paragraph data-line-573">
-<p>That said, as on <code>VER0.3.0</code> message passing within K0BA is orthodox: fixed-size messages, passed by copy.</p>
+<p>That said, as on <code>VER0.3.0</code> message passing within K0BA is orthodox: messages are passed by copy.</p>
 </div>
 <hr>
 <div class="sect3 data-line-577">
@@ -1374,64 +1374,78 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 <h3 id="message_queues">7.2. Message Queues</h3>
 <div class="sect3 data-line-622">
 <h4 id="indirect_blocking_message_queue">7.2.1. Indirect Blocking Message Queue</h4>
-<div class="paragraph data-line-624">
+<div class="paragraph data-line-626">
 <p>This type of message queue can be depicted as a circular buffer with a mailbox on the head and another on the tail - initially head and tail are the same, so the circular buffer is empty. As buffering need increases, tail moves away from head. Data is extracted, head moves towards tail (<em>or vice-versa</em>). When both boxes have (unread) data, it means our buffering capacity is over.</p>
 </div>
-<div class="paragraph data-line-626">
+<div class="paragraph data-line-628">
 <p>Thus, it will behave asynchronously until a receiver try to read from an empty queue and (optionally) when a producer tries to write on a full queue. This behaviour might be desirable or not. The result, anyway, is that tasks with different periods end up synchronising to the lowest rate task -  (<em>usually</em>, undesirable for real-time). After a queue blocks full, when it eventually unblocks you might had lost data. Is it the problem? Yes and no.</p>
 </div>
-<div class="paragraph data-line-628">
+<div class="paragraph data-line-630">
 <p>The problem with a queue is that by buffering you are reading from the past. Between a message that does not arrive, and one that  arrives with information that is not useful, there is no practical difference. But if a message arrives with information that will deceive your control loop to perform a wrong action - this is the worse.  That can be avoided if your send-receive pair follows an unidirectional  order, and handle predictable timing events (loosely, periodic events). Finally, the queue size must be adequate (look at Little&#8217;s theorem).  So, except for logging/monitoring or serialize access, queues <em>might</em> cause trouble when a system takes action with the information it is reading.</p>
 </div>
-<div class="paragraph data-line-630">
+<div class="paragraph data-line-632">
 <p>The message queue service works with an allocator. You initialise a queue by providing the size of the item, and the number of items - the product of both is the queue capacity. Besides you pass the pool where the allocator will arrange the buffering.</p>
 </div>
-<div class="paragraph data-line-632">
+<div class="paragraph data-line-634">
 <p>Receiving from an empty queue is always blocking. Sending is optionally blocking and configured on <code>kconfig.h</code>. As on <code>VER0.3.0</code> Message Queue service depends on semaphores, and thus, the enqueing discipline for blocking tasks, is the same as those you&#8217;ve configured for semaphores (priority or FIFO).</p>
 </div>
+<div class="admonitionblock warning data-line-637">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph data-line-638">
+<p>The Indirect Blocking Message Queue in VER0.3.0 is classified as <strong><em>BLOATED</em></strong> and will undergo major refactoring. This is the second major failure under the <em>K0BA Design Committee</em>, following <em>USELESS</em>.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
-<div class="sect2 data-line-635">
+</div>
+<div class="sect2 data-line-641">
 <h3 id="indirect_asynch_pump_drop_message_queue">7.3. Indirect Asynch "Pump-Drop" Message Queue</h3>
-<div class="paragraph data-line-637">
+<div class="paragraph data-line-643">
 <p>Pump-Drop Queues are meant to overcome the drawbacks exposed above for message queues, based on the concept of Cyclical Asynchronous Buffers (CAB) (essentialy as found in the HARTIK kernel). These queues are a one-to-many mechanism. A buffer can be read by several consumers, but no buffer can be written while consumed. The ideal queue size is the number of readers + 1.</p>
 </div>
-<div class="paragraph data-line-639">
+<div class="paragraph data-line-645">
 <p>The semantics is as follows:</p>
 </div>
-<div class="ulist data-line-641">
+<div class="ulist data-line-647">
 <ul>
-<li class="data-line-641">
+<li class="data-line-647">
 <p>When the producer needs to write a new message to the queue, first it reserves a buffer. With a valid address, it attaches to the buffer the mesage address and size, and 'pump' it to the queue. Now, this message is available to be read by several consumers - until it is overwritten.</p>
 </li>
-<li class="data-line-642">
+<li class="data-line-648">
 <p>The last message pumped in a queue is not overwritten UNTIL a new buffer is
 pumped and finds its number of clients is zero (all readers dropped)</p>
 </li>
-<li class="data-line-644">
+<li class="data-line-650">
 <p>A reader first 'fetches' a message buffer address - what will increase the user count within a buffer. After consuming the message, the reader 'drop the buffer'.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph data-line-646">
+<div class="paragraph data-line-652">
 <p>By the exposure, you can conclude that a reader might miss messages when the writer&#8217;s rate is higher. A reader within a (servo-loop) controller can afford a 'miss' rate— what leads to failure is reading messages that do not represent the plant state.</p>
 </div>
-<div class="paragraph data-line-648">
+<div class="paragraph data-line-654">
 <p>Pump-drop queues are optional and can be turned ON/OFF in <code>kconfig.h</code>.</p>
 </div>
-<div class="exampleblock data-line-650">
+<div class="exampleblock data-line-656">
 <div class="content">
-<div class="paragraph data-line-651">
+<div class="paragraph data-line-657">
 <p>In UNIX a <em>broken pipe</em> is a pipe with writers but no
 readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinforces the idea that there is not such a thing as valid never-received data.</p>
 </div>
 </div>
 </div>
 </div>
-<div class="sect2 data-line-656">
+<div class="sect2 data-line-662">
 <h3 id="pipes">7.4. Pipes</h3>
-<div class="paragraph data-line-658">
-<p>Formally pipes are not message passing, because data is transmitted as 'raw' bytes.
+<div class="paragraph data-line-664">
+<p>Formally pipes are not a message passing mechanism, because data is transmitted as 'raw' bytes.
 Pipes transmit streams of bytes - unlike queues or mailboxes
 that transmit 'objects' with a format. They are fast because data does
 not move, what moves is the read/write pointer within the pipe buffer.
@@ -1439,22 +1453,22 @@ A writer stops its operation when the N specified bytes have been
 written, or there is no more room. In the last case it goes to sleep until
 a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
-<div class="paragraph data-line-666">
+<div class="paragraph data-line-672">
 <p>A reader reads until N specified bytes were read or when there is no more data. In the last case it will sleep, to be waken by a writer.</p>
 </div>
-<div class="paragraph data-line-668">
+<div class="paragraph data-line-674">
 <p>Both one-to-many and many-to-one channels are possible - those who wake need to themselves ensure precedence.</p>
 </div>
-<div class="paragraph data-line-670">
+<div class="paragraph data-line-676">
 <p>A handy use of these pipe is combining two for <em>double buffering</em>.</p>
 </div>
-<div class="paragraph data-line-672">
+<div class="paragraph data-line-678">
 <p>Pipes are optional and can be turned ON/OFF in <code>kconfig.h</code>.</p>
 </div>
-<div class="paragraph data-line-674">
+<div class="paragraph data-line-680">
 <p>As on V0.3.0, they depend on <em>sleep-wake</em> mechanism.</p>
 </div>
-<div class="paragraph data-line-676">
+<div class="paragraph data-line-682">
 <p>You cannot usem them within ISRs, in no occasion.</p>
 </div>
 <hr>
