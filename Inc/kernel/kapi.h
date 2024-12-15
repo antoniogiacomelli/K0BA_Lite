@@ -524,12 +524,20 @@ TID kGetTaskPID(TID const taskID);
 PRIO kGetTaskPrio(TID const taskID);
 
 /**
- * \brief Returns the size of a string
- * \param string A pointer to char
- * \return string length - 1 (does not count '\0')
+ * \brief Returns the kernel version.
+ * \return Kernel version as an unsigned integer.
  */
 unsigned int kGetVersion(void);
+/**
+ * \brief   Deep copy from srcPtr to destPtr
+ * \param   srcPtr - address to copy from
+ * \param   destPtr - address to copy to
+ * \param   size - number of bytes to be copyied
+ * \return  Effective number of copyied bytes.
+ */
 SIZE kMemCpy(ADDR destPtr, ADDR const srcPtr, SIZE size);
+
+
 /*
  * brief Macro for unused variables
  */
