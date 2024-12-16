@@ -329,7 +329,7 @@ VOID kRemoveTaskFromQueue(ADDR kobj)
 
 VOID kRemoveTaskFromEvent(ADDR kobj)
 {
-    K_EVENT* eventPtr = (K_MESGQ *)kobj;
+    K_EVENT* eventPtr = (K_EVENT *)kobj;
 
     if (eventPtr->waitingQueue.size > 0)
     {
@@ -344,7 +344,9 @@ VOID kRemoveTaskFromEvent(ADDR kobj)
     }
 }
 
-
+/*
+TODO: order by time or delta
+*/
 VOID kHandleTimeoutList(void)
 {
 	K_TIMEOUT_NODE **currentPtr = &timeOutListHeadPtr;

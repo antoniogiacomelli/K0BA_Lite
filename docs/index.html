@@ -998,10 +998,10 @@ VOID Task4(VOID)
 <td class="tableblock halign-left valign-top"><p class="tableblock">Callout Arguments</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Delta Ticks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Current Tick Count</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Current Delta Tick</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Next Timer Address</p></td>
@@ -1052,21 +1052,20 @@ A specialised use-case of one-shot timers is the <code>kSleep(ticks)</code> prim
 </tr>
 </tbody>
 </table>
-<div class="paragraph data-line-445">
-<p>Often we have fixed-size blocks statically allocated (a pool) and we might need to 'multiplex' its usage in time. A routine grabs a block (allocate it), use and put it back in the pool (free it). A simple approach would be a static table marking each block  either as <code>free</code> or <code>taken</code>.
-With this pattern you will need to 'search' for the next available block, if any - the time for searching changes.</p>
+<div class="paragraph data-line-446">
+<p>Bear in mind that the standard <code>malloc</code> leads to fragmentation and (also, because of that) is highly undeterministic. Unless we are using it once - to allocate memory before starting up,  it doesn&#8217;t fit.But often we need to 'multiplex' memory amongst tasks over time, that is to dynamic allocate and deallocate.</p>
 </div>
 <div class="paragraph data-line-448">
-<p>For real-time, a suitable approach is to keep track of what is free using a linked list of addresses - a dynamic table. We use meta-data a list within the pool first: it is initialised so that every block holds the address of its next block. This approach limits that the minimal size of a block is the size of a memory address - 32-bit for our supported architecture.</p>
+<p>To avoid fragmentation we use fixed-size memory blocks. A simple approach would be a static table marking each block  either as <code>free</code> or <code>taken</code>. With this pattern you will need to 'search' for the next available block, if any - the time for searching changes - what is indeterministic.</p>
 </div>
 <div class="paragraph data-line-450">
-<p>When a routine calls <code>alloc()</code> the address to be returned is the one free list is pointing to, say <code>addr1</code>. Before, we update free list to point to the value stored within <code>addr1</code>, say <code>addr8</code>.</p>
+<p>A suitable approach is to keep track of what is free using a linked list of addresses - a dynamic table. We use meta-data a list within the pool first: it is initialised so that every block holds the address of its next block. This approach limits that the minimal size of a block is the size of a memory address - 32-bit for our supported architecture.</p>
 </div>
 <div class="paragraph data-line-452">
-<p>When a routine calls <code>free(addr1)</code>, we overwrite whatever has been written in <code>addr1</code> with the value freelist points to (if no more <code>alloc()</code> were issued, it still is <code>addr8</code>), and <code>addr1</code> is the freelist head again.</p>
+<p>When a routine calls <code>alloc()</code> the address to be returned is the one free list is pointing to, say <code>addr1</code>. Before, we update free list to point to the value stored within <code>addr1</code>, say <code>addr8</code>.</p>
 </div>
 <div class="paragraph data-line-454">
-<p>Allocating a block always takes the same time and there is no fragmentation as we grab chunks of fixed-size.</p>
+<p>When a routine calls <code>free(addr1)</code>, we overwrite whatever has been written in <code>addr1</code> with the value freelist points to (if no more <code>alloc()</code> were issued, it still is <code>addr8</code>), and <code>addr1</code> is the freelist head again.</p>
 </div>
 <div class="paragraph data-line-456">
 <p>A major hazard is having a routine writing to non-allocated memory within a pool, as it will spoil the meta-data.</p>
@@ -1261,32 +1260,35 @@ The overhead is excessive—both in time and space—a need to reserve a space o
 <p>Blocking primitives within K0BA have a <code>timeout</code> parameter, given in ticks. Only <code>kPend()</code> does not given its logical simplistic nature, and application.
 If the task cannot perform  access to a resource within a time given in system ticks, it will switch back to READY, eventually be dispatched, and force a return <code>K_ERR_TIMEOUT</code>.</p>
 </div>
+<div class="paragraph data-line-563">
+<p><em>(Several members within K0BA Design Committee were not willing to sign off this feature. A minority report might be issued in the due time.)</em></p>
 </div>
 </div>
-<div class="sect2 data-line-564">
+</div>
+<div class="sect2 data-line-565">
 <h3 id="message_passing">4.8. Message Passing</h3>
-<div class="paragraph data-line-566">
+<div class="paragraph data-line-567">
 <p>What is the meaning of "message passing" when all memory is <em>shared memory</em>? I ask that because traditionally they oppose. Message Passing is a system call asking the kernel to copy data from a region user tasks are not allowed to access. Shared Memory is a public memory region, in which user processes can direct write to and read from - the details are implementation-dependent. It is faster, and need to be managed as any shared resource.</p>
 </div>
-<div class="paragraph data-line-568">
+<div class="paragraph data-line-569">
 <p>Yet, on embedded we work hard to enqueue <em>pointers</em>. How is that? Pointer-as-message is a formalised handshake for accessing shared memory in an already shared memory system. Sounds like application-dependent. It is reasonable doing so when copying will create a contention the application cannot afford.</p>
 </div>
-<div class="paragraph data-line-570">
+<div class="paragraph data-line-571">
 <p>Any mechanism allowing that end up on leaving the message scope to be managed by the user task - what is not only anti-modular; it deviates from K0BA guideline for what can be a service.</p>
 </div>
-<div class="paragraph data-line-572">
+<div class="paragraph data-line-573">
 <p>That said, as on <code>VER0.3.0</code> message passing as provided by K0BA is orthodox: messages are passed by copy.</p>
 </div>
-<div class="exampleblock data-line-574">
+<div class="exampleblock data-line-575">
 <div class="content">
-<div class="paragraph data-line-576">
+<div class="paragraph data-line-577">
 <p>Within standard K0BA mechanisms, you can pass pointer-messages, using the Memory Allocator. A producer <code>alloc()</code>  an address, fill with information (pottentialy another address&#8230;&#8203;), thus taking the measures (and mechanisms) to share a resource, leave it to a receiver. After consuming the message, the receiver <code>free()</code> the memory block. The variations around this pattern are plenty, all ad-hoc.</p>
 </div>
 </div>
 </div>
-<div class="sect3 data-line-580">
+<div class="sect3 data-line-581">
 <h4 id="mailboxes">4.8.1. Mailboxes</h4>
-<table class="tableblock frame-all grid-all stretch data-line-584">
+<table class="tableblock frame-all grid-all stretch data-line-585">
 <colgroup>
 <col style="width: 100%;">
 </colgroup>
@@ -1311,86 +1313,89 @@ If the task cannot perform  access to a resource within a time given in system t
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Owner task</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout</p></td>
+</tr>
 </tbody>
 </table>
-<div class="paragraph data-line-594">
+<div class="paragraph data-line-596">
 <p>Mailboxes are kernel objects ruled by the absence or presence of a message. A mailbox holds a single message unit - the size is application-defined.</p>
 </div>
-<div class="sect4 data-line-596">
+<div class="sect4 data-line-598">
 <h5 id="blocking_mailboxes">Blocking mailboxes</h5>
-<div class="paragraph data-line-598">
+<div class="paragraph data-line-600">
 <p>Blocking mailboxes can be regarded as synchronous - a consumer blocks on an empty box until a message arrives, likewise a producer blocks on a full box waiting the current message to be consumed before depositing another.</p>
 </div>
-<div class="paragraph data-line-600">
+<div class="paragraph data-line-602">
 <p>A synchronous mailbox interface contract can be defined as follows:</p>
 </div>
-<div class="olist arabic data-line-602">
+<div class="olist arabic data-line-604">
 <ol class="arabic">
-<li class="data-line-602">
+<li class="data-line-604">
 <p>A mailbox starts EMPTY, with non-null storage address where a fixed-size message will be deposited and retrieved. Both message size and storage address remains constant.</p>
 </li>
-<li class="data-line-603">
+<li class="data-line-605">
 <p>A mailbox will always have an assigned 'owner' after the first <code>send()</code> or <code>recv()</code> primitive. The owner is the task who succeded gaining access to the box.</p>
 </li>
-<li class="data-line-604">
+<li class="data-line-606">
 <p>A <code>send()</code> primitive takes a mailbox address, a source message address. The message is <em>copyied</em> from the source to the box storage.</p>
 </li>
-<li class="data-line-605">
+<li class="data-line-607">
 <p>A <code>recv()</code> primitive receives a mailbox address and destination address. The message is <em>copyied</em> from the box storage to the destination address.</p>
 </li>
-<li class="data-line-606">
+<li class="data-line-608">
 <p>When a producer <code>send()</code> to an EMPTY mailbox, it is the owner. After depositing the message, mailbox is FULL.</p>
 </li>
-<li class="data-line-607">
+<li class="data-line-609">
 <p>When a consumer <code>recv()</code> from a FULL mailbox, it is the owner. After extracting the message, mailbox is EMPTY.</p>
 </li>
-<li class="data-line-608">
+<li class="data-line-610">
 <p>When a producer <code>send()</code> to a FULL mailbox, it blocks, is enqueued on the mailbox waiting queue, and its task will now be on state <code>SENDING</code>.</p>
 </li>
-<li class="data-line-609">
+<li class="data-line-611">
 <p>Likewise, a consumer blocks when issuing a <code>recv()</code> on an empty mailbox. Task status switches to <code>RECEIVING</code> and it is enqueued on the mailbox waiting queue.</p>
 </li>
-<li class="data-line-610">
+<li class="data-line-612">
 <p>A mailbox implements a priority propagation protocol, boosting the owner priority on the occasion a higher priority task blocks.</p>
 </li>
-<li class="data-line-611">
+<li class="data-line-613">
 <p>The waiting queue for a mailbox, has an enqueing discipline that can either be  priority or FIFO. Default is by priority, to be coherent with the scheduler.</p>
 </li>
-<li class="data-line-612">
+<li class="data-line-614">
 <p>Blocking <code>send()</code> or <code>recv()</code> cannot be used within ISRs.</p>
 </li>
 </ol>
 </div>
-<div class="paragraph data-line-614">
+<div class="paragraph data-line-616">
 <p>You need to be aware of how the priority of tasks and mailbox queue discipline impact the message exchange. Say you have a bad idea: two producers and a consumer with priorities High, Medium and Low, respectively. Producers <code>send()</code> and consumer <code>recv()</code> - no other blocking conditions. If the queue discipline for the mailbox is ordered by priority, the medium priority producer will block once and <strong>deadlock</strong> - since when the consumer empties the box, who is released is the higher priority - always. If it is a FIFO, it will receive the two messages serially; wonder <em>you are choosing to delay a higher priority task.</em>)</p>
 </div>
 </div>
-<div class="sect4 data-line-617">
+<div class="sect4 data-line-619">
 <h5 id="named_mailboxes_direct_channel">Named Mailboxes (direct channel)</h5>
-<div class="paragraph data-line-619">
+<div class="paragraph data-line-621">
 <p>By default a mailbox is a public object, so any task can send or receive to one. You can choose to <em>name</em> a mailbox channel so only one task can <em>receive</em> from it. To do so, after initialising a mailbox use the primitive <code>mboxname()</code> passing the mailbox object and the task ID that will own the channel.
 From now on, only this task will be allowed to <code>recv()</code> from this mailbox - and it will not be allowed to <code>send()</code>. This is particularly useful for client-server designs - when they fit.</p>
 </div>
 </div>
-<div class="sect4 data-line-622">
+<div class="sect4 data-line-624">
 <h5 id="aynchronous_methods">Aynchronous methods</h5>
-<div class="paragraph data-line-624">
+<div class="paragraph data-line-626">
 <p>An alternative usage for the same mailboxes are the primitives <code>asend()</code> and <code>arecv()</code>. Instead of blocking they will return an error. These are suitable for ISRs or when you want an asynchronous communication between tasks.</p>
 </div>
-<div class="paragraph data-line-626">
+<div class="paragraph data-line-628">
 <p>There two other asynchronous methods: <code>asendovw()</code> - to deposit a message on a mailbox even if it is FULL,
 and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box will not switch to EMPTY - so other receivers can grab the same message.</p>
 </div>
 <hr>
-<div class="paragraph data-line-631">
+<div class="paragraph data-line-633">
 <p>You can use a <code>mboxquery()</code> method to check on the status of a mailbox before <code>send()</code> or <code>recv()</code> if not willing to block.</p>
 </div>
 <hr>
 </div>
 </div>
-<div class="sect3 data-line-635">
+<div class="sect3 data-line-637">
 <h4 id="indirect_blocking_message_queue">4.8.2. Indirect Blocking Message Queue</h4>
-<table class="tableblock frame-all grid-all stretch data-line-638">
+<table class="tableblock frame-all grid-all stretch data-line-640">
 <colgroup>
 <col style="width: 100%;">
 </colgroup>
@@ -1421,56 +1426,59 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Owner task</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout</p></td>
+</tr>
 </tbody>
 </table>
-<div class="paragraph data-line-650">
+<div class="paragraph data-line-653">
 <p>Other K0BA versions, as well other geringonças I have designed, I would follow the SystemV IPC idea, that a message queue is a "head of a linked-list of messages", providing a global pool of buffers to be shared amongst all tasks.</p>
 </div>
-<div class="paragraph data-line-652">
+<div class="paragraph data-line-655">
 <p>For <code>VER0.3.0</code> the approach is leaner.
 The indirect blocking message queue is a taller sibling of a mailbox - the only thing that changes is that the number of messages N&gt;1. So, it is as a circular buffer with a mailbox on its write index (tail) and another on its read index (head). Initially head and tail are the same, so the circular buffer is empty. As buffering need increases, tail moves away from head. Data is extracted, head moves towards tail.</p>
 </div>
-<div class="paragraph data-line-655">
+<div class="paragraph data-line-658">
 <p>Indeed a message queue with N=1 is what we call a mailbox in this document. The primitives for the message queue are <code>send()</code>, <code>recv()</code> and <code>jam()</code> (places a messsage on the queue front, so it will be next message to be received). Message Queues also propagate priority, and the queue discipline is configured either as by priority or FIFO.</p>
 </div>
-<div class="paragraph data-line-657">
+<div class="paragraph data-line-660">
 <p>Note, a queue will behave asynchronously until a <code>recv()</code> is issued to an empty queue and (optionally) when a <code>send()</code> is issued on a full queue. This behaviour might be desirable or not. The result, anyway, is that tasks with different periods end up synchronising to the lowest rate  -  (<em>usually</em>, undesirable for real-time). After a queue blocks full, when it eventually unblocks you might had lost data - after all, a producer when blocked won&#8217;t be able to update its data. Is it the problem? Yes and no. The problem with a blocking queue is that by buffering you are reading from the past.</p>
 </div>
-<div class="paragraph data-line-659">
+<div class="paragraph data-line-662">
 <p>Between a message that does not arrive, and one that  arrives with information that is not useful, there is no practical difference. But if a message arrives with information that will deceive your control loop to perform a wrong action - this is the worse.  That can be avoided if your send-receive pair follows an unidirectional  order, and handle predictable timing events (loosely, periodic events). Finally, the queue size must be adequate (look at Little&#8217;s theorem).  So, except for logging/monitoring or serialize access, queues <em>might</em> cause trouble when a system takes action with the information it is reading.</p>
 </div>
 </div>
-<div class="sect3 data-line-661">
+<div class="sect3 data-line-664">
 <h4 id="indirect_asynch_pump_drop_message_queue">4.8.3. Indirect Asynch "Pump-Drop" Message Queue</h4>
-<div class="paragraph data-line-663">
+<div class="paragraph data-line-666">
 <p>Pump-Drop Queues are meant to overcome the drawbacks exposed above for message queues, based on the concept of Cyclical Asynchronous Buffers (CAB) (essentialy as found in the HARTIK kernel). These queues are a one-to-many mechanism. A buffer can be read by several consumers, but no buffer can be written while consumed. The ideal queue size is the number of readers + 1.</p>
 </div>
-<div class="paragraph data-line-665">
+<div class="paragraph data-line-668">
 <p>The semantics is as follows:</p>
 </div>
-<div class="ulist data-line-667">
+<div class="ulist data-line-670">
 <ul>
-<li class="data-line-667">
+<li class="data-line-670">
 <p>When the producer needs to write a new message to the queue, first it reserves a buffer. With a valid address, it attaches to the buffer the mesage address and size, and 'pump' it to the queue. Now, this message is available to be read by several consumers - until it is overwritten.</p>
 </li>
-<li class="data-line-668">
+<li class="data-line-671">
 <p>The last message pumped in a queue is not overwritten UNTIL a new buffer is
 pumped and finds its number of clients is zero (all readers dropped)</p>
 </li>
-<li class="data-line-670">
+<li class="data-line-673">
 <p>A reader first 'fetches' a message buffer address - what will increase the user count within a buffer. After consuming the message, the reader 'drop the buffer'.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph data-line-672">
+<div class="paragraph data-line-675">
 <p>By the exposure, you can conclude that a reader might miss messages when the writer&#8217;s rate is higher. A reader within a (servo-loop) controller can afford a 'miss' rate— what leads to failure is reading messages that do not represent the plant state.</p>
 </div>
-<div class="paragraph data-line-674">
+<div class="paragraph data-line-677">
 <p>Pump-drop queues are optional and can be turned ON/OFF in <code>kconfig.h</code>.</p>
 </div>
-<div class="exampleblock data-line-676">
+<div class="exampleblock data-line-679">
 <div class="content">
-<div class="paragraph data-line-677">
+<div class="paragraph data-line-680">
 <p>In UNIX a <em>broken pipe</em> is a pipe with writers but no
 readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinforces the idea that there is not such a thing as valid never-received data.</p>
 </div>
@@ -1478,9 +1486,9 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 </div>
 </div>
 </div>
-<div class="sect2 data-line-682">
+<div class="sect2 data-line-685">
 <h3 id="pipes">4.9. Pipes</h3>
-<table class="tableblock frame-all grid-all stretch data-line-686">
+<table class="tableblock frame-all grid-all stretch data-line-689">
 <colgroup>
 <col style="width: 100%;">
 </colgroup>
@@ -1511,9 +1519,12 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Event "data"</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout</p></td>
+</tr>
 </tbody>
 </table>
-<div class="paragraph data-line-697">
+<div class="paragraph data-line-701">
 <p>Pipes transmit streams of bytes - unlike queues or mailboxes
 that transmit 'objects' with a format. They are fast because data does
 not move, what moves is the read/write pointer within the pipe buffer.
@@ -1521,22 +1532,22 @@ A writer stops its operation when the N specified bytes have been
 written, or there is no more room. In the last case it goes to sleep until
 a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
-<div class="paragraph data-line-704">
+<div class="paragraph data-line-708">
 <p>A reader reads until N specified bytes were read or when there is no more data. In the last case it will sleep, to be waken by a writer.</p>
 </div>
-<div class="paragraph data-line-706">
+<div class="paragraph data-line-710">
 <p>Both one-to-many and many-to-one channels are possible - those who wake need to themselves ensure precedence.</p>
 </div>
-<div class="paragraph data-line-708">
+<div class="paragraph data-line-712">
 <p>A handy use of these pipe is combining two for <em>double buffering</em>.</p>
 </div>
-<div class="paragraph data-line-710">
+<div class="paragraph data-line-714">
 <p>Pipes are optional and can be turned ON/OFF in <code>kconfig.h</code>.</p>
 </div>
-<div class="paragraph data-line-712">
+<div class="paragraph data-line-716">
 <p>As on V0.3.0, they depend on <em>sleep-wake</em> mechanism.</p>
 </div>
-<div class="paragraph data-line-714">
+<div class="paragraph data-line-718">
 <p>You cannot usem them within ISRs, in no occasion.</p>
 </div>
 <hr>

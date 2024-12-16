@@ -31,7 +31,6 @@
 /* scheduler globals */
 K_TCBQ readyQueue[K_DEF_MIN_PRIO + 2];
 K_TCBQ sleepingQueue;
-K_TCBQ attmptQueue;
 K_TCB *runPtr;
 K_TCB tcbs[NTHREADS];
 volatile struct kRunTime runTime;
@@ -447,7 +446,6 @@ static K_ERR kInitQueues_(void)
 		err |= kTCBQInit(&readyQueue[prio], "ReadyQ");
 	}
 	err |= kTCBQInit(&sleepingQueue, "SleepQ");
-	err |= kTCBQInit(&attmptQueue, "attmptQ");
 	assert(err == 0);
 	return (err);
 }
