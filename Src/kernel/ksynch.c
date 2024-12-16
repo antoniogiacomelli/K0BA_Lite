@@ -192,7 +192,6 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 	}
 	kobj->init = TRUE;
 	kobj->ownerPtr = NULL;
-	/* Initialize the embedded timeout node */
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;

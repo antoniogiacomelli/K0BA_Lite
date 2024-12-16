@@ -471,7 +471,10 @@ K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR const buffer, SIZE const mesgSize,
 	}
 
 	kobj->init = 1;
-
+	kobj->timeoutNode.nextPtr = NULL;
+	kobj->timeoutNode.timeout = 0;
+	kobj->timeoutNode.kobj = kobj;
+	kobj->timeoutNode.objectType = TIMEOUT_QUEUE;
 	K_EXIT_CR
 
 	return (K_SUCCESS);

@@ -327,6 +327,23 @@ VOID kRemoveTaskFromQueue(ADDR kobj)
     }
 }
 
+VOID kRemoveTaskFromEvent(ADDR kobj)
+{
+    K_EVENT* eventPtr = (K_MESGQ *)kobj;
+
+    if (eventPtr->waitingQueue.size > 0)
+    {
+        K_TCB *taskPtr;
+        kTCBQDeq(&eventPtr->waitingQueue, &taskPtr);
+
+        taskPtr->status = READY;
+        taskPtr->timeOut = TRUE;
+
+        kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+        taskPtr->status=READY;
+    }
+}
+
 
 VOID kHandleTimeoutList(void)
 {
@@ -362,6 +379,9 @@ VOID kHandleTimeoutList(void)
 			case TIMEOUT_QUEUE:
 				kRemoveTaskFromQueue(node->kobj);
 				break;
+			case TIMEOUT_EVENT:
+					kRemoveTaskFromEvent(node->kobj);
+					break;
 			default:
 				KFAULT(FAULT);
 				break;

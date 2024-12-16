@@ -54,6 +54,10 @@ static inline K_ERR kEventInit(K_EVENT* const kobj)
     kobj->eventID = (UINT32) kobj;
     assert( !kTCBQInit( & (kobj->waitingQueue), "eventQ"));
     kobj->init = TRUE;
+	kobj->timeoutNode.nextPtr = NULL;
+	kobj->timeoutNode.timeout = 0;
+	kobj->timeoutNode.kobj = kobj;
+	kobj->timeoutNode.objectType = TIMEOUT_EVENT;
     return (K_SUCCESS);
 }
 VOID kEventSleep(K_EVENT* const, TICK);

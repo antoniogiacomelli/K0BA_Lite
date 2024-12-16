@@ -19,6 +19,7 @@ void kRemoveTaskFromSema(void *kobj);
 VOID kRemoveTaskFromMutex(ADDR kobj);
 VOID kRemoveTaskFromQueue(ADDR kobj);
 VOID kHandleTimeoutList(void);
+VOID kRemoveTaskFromEvent(ADDR kobj);
 
 extern volatile struct kRunTime runTime; /* record of run time */
 
