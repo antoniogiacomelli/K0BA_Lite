@@ -28,7 +28,7 @@
  * BLOCKING/SYNCHRONOUS MAILBOX
  ******************************************************************************/
 #if (K_DEF_MBOX==ON)
-K_MBOX *mboxTimeoutListHead = NULL;
+
 K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize)
 {
 	K_CR_AREA
@@ -272,6 +272,7 @@ K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID *senderIDPtr,
 	K_EXIT_CR
 	return (K_ERR_MEM_CPY);
 }
+#endif /*synchmbox*/
 
 #if (K_DEF_AMBOX==ON)
 K_ERR kMboxAsend(K_MBOX *const kobj, ADDR const sendPtr)
@@ -414,6 +415,7 @@ K_ERR kMboxArecvKeep(K_MBOX *const kobj, ADDR recvPtr, TID *senderTIDPtr)
 }
 
 #endif
+
 K_MBOX_STATUS kMboxQuery(K_MBOX *const kobj)
 {
 
@@ -426,20 +428,15 @@ SIZE kMboxGetSize(K_MBOX *const kobj)
 	return (kobj->mailSize);
 }
 #endif
-#endif
 
 /*******************************************************************************
  * INDIRECT BLOCKING MESSAGE QUEUE
  *******************************************************************************/
 /*
- * The message queue is an extended mailbox. A queue implies on an entry index
- * (write) and an
- index (read),  an intermediate state between empty and
- * full and the need to track the
- * number of messages directly with a counter.
+ * The message queue is an extended mailbox. A queue implies on two entry points
+ * an intermediate state between full and empty and on message/space counter.
  * Yet a single waiting queue is enough since after blocking full only writers
  * are released by readers, and vice-versa
- *
  */
 
 #if(K_DEF_MESGQ==ON)
