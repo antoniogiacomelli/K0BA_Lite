@@ -126,9 +126,7 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 {
 	K_CR_AREA
 	if (kIsISR())
-	{
-		return (K_ERR_MBOX_ISR);
-	}
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
 	if ((kobj == NULL) || (sendPtr == NULL))
 	{
 		KFAULT(FAULT_NULL_OBJ);
@@ -516,6 +514,8 @@ K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK const timeout)
 	{
 		return (K_ERROR);
 	}
+	if (kIsISR())
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
 
 	K_ENTER_CR
 	if (kobj->mesgCnt >= kobj->maxMesg) /*full*/
@@ -590,6 +590,8 @@ K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK const timeout)
 	{
 		return (K_ERROR);
 	}
+	if (kIsISR())
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
 
 	K_ENTER_CR
 
@@ -657,6 +659,8 @@ K_ERR kMesgQPeek(K_MESGQ *const kobj, ADDR recvPtr)
 	{
 		return (K_ERROR);
 	}
+	if (kIsISR())
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
 
 	K_ENTER_CR
 
@@ -685,6 +689,8 @@ K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr)
 	{
 		return (K_ERROR);
 	}
+	if (kIsISR())
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
 
 	K_ENTER_CR
 
@@ -963,6 +969,10 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 {
 	if (IS_NULL_PTR(kobj))
 		KFAULT(FAULT_NULL_OBJ);
+	if (kIsISR())
+	{
+		KFAULT(FAULT_ISR_INVALID_PRIMITVE);
+	}
 	K_CR_AREA
 	K_ENTER_CR
 	K_ERR err = -1;
@@ -993,10 +1003,6 @@ UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
 	if (kobj->init==FALSE)
 	{
 		KFAULT(FAULT_OBJ_NOT_INIT);
-	}
-	if (kIsISR())
-	{
-		KFAULT(FAULT);
 	}
 	UINT32 readBytes = 0;
 	if (nBytes == 0)
