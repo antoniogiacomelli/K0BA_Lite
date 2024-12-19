@@ -518,7 +518,6 @@ K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK const timeout)
 	}
 
 	K_ENTER_CR
-#if(K_DEF_MESGQ_BLOCK_FULL==ON)
 	if (kobj->mesgCnt >= kobj->maxMesg) /*full*/
 	{
 		if ((kobj->owner != NULL) && (runPtr->priority < kobj->owner->priority))
@@ -544,7 +543,6 @@ K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK const timeout)
 			return(K_ERR_TIMEOUT);
 		}
 	}
-#endif
 	BYTE *dest = kobj->buffer + (kobj->writeIndex * kobj->mesgSize);
 	BYTE const *src = (BYTE const*) sendPtr;
 	SIZE err = 0;
@@ -965,10 +963,6 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 {
 	if (IS_NULL_PTR(kobj))
 		KFAULT(FAULT_NULL_OBJ);
-	if (kIsISR())
-	{
-
-	}
 	K_CR_AREA
 	K_ENTER_CR
 	K_ERR err = -1;
@@ -999,6 +993,10 @@ UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
 	if (kobj->init==FALSE)
 	{
 		KFAULT(FAULT_OBJ_NOT_INIT);
+	}
+	if (kIsISR())
+	{
+		KFAULT(FAULT);
 	}
 	UINT32 readBytes = 0;
 	if (nBytes == 0)

@@ -1484,7 +1484,7 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 <p>For a message queue, user will provide a buffer with enough capacity (number of messages <em>x</em> message size), that will be handled as a circular buffer. Message queues always start empty.</p>
 </div>
 <div class="paragraph data-line-665">
-<p>The primitives for the message queue are <code>send()</code>, <code>recv()</code> and <code>jam()</code> (places a messsage on the queue front, so it will be next message to be received). Message Queues also propagate priority, and the queue discipline is configured either as by priority or FIFO.</p>
+<p>The primitives for the message queue are <code>send()</code>, <code>recv()</code>, <code>asend()</code>, <code>arecv()</code>,<code>jam()</code> (places a messsage on the queue head, so it will be next message to be received) and <code>peek()</code> (grab the message within the queue head without extracting it). Message Queues also propagate priority, and the queue discipline is configured either as by priority or FIFO.</p>
 </div>
 <div class="paragraph data-line-667">
 <p>Note, a queue will behave asynchronously until a <code>recv()</code> is issued to an empty queue and when a <code>send()</code> is issued on a full queue. This behaviour might be desirable or not. The result, anyway, is that tasks with different periods end up synchronising to the lowest rate  -  (<em>usually</em>, undesirable for real-time). After a queue blocks full, when it eventually unblocks you might had lost data - after all, a producer when blocked won&#8217;t be able to update its data. Is it the problem? Yes and no. The problem with a blocking queue is that by buffering you are reading from the past.</p>

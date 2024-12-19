@@ -87,8 +87,6 @@
 
 #if (K_DEF_MESGQ == ON)
 
-/*** Blocking send()				*/
-#define K_DEF_MESGQ_BLOCK_FULL        (ON)
 
 /*** Asynch methods					*/
 #define K_DE_AMESGQ					  (ON)
