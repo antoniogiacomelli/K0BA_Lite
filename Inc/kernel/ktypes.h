@@ -123,8 +123,8 @@ typedef enum kErr
 													  unknown buffering address */
 	K_ERR_NAMED_MBOX_SEND_SELF  = (int)0xFFFF0013, /* named channel cant sent do itself */
 	K_ERR_NAMED_MBOX_RECV		= (int)0xFFFF0014, /* a named mbox can only accept recv its assigned task */
-	K_ERR_MBOX_INIT_MAIL		= (int)0xFFFF0015
-
+	K_ERR_MBOX_INIT_MAIL		= (int)0xFFFF0015,
+	K_ERR_MUTEX_REC_LOCK		= (int)0xFFFF0016
 
 
 } K_ERR;
@@ -247,4 +247,10 @@ typedef K_LIST K_TCBQ;
 
 #endif
 
+typedef enum
+{
+	K_OR,
+	K_AND,
+	K_XOR
+}K_BITWISE;
 #endif/*ktypes*/

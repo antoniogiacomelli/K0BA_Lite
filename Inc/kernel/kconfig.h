@@ -33,7 +33,7 @@
 
 /* include headers for HAL and compiler in kenv.h */
 /* and set this macro to 1                        */
-#define CUSTOM_ENV (1)
+#define CUSTOM_ENV (0)
 
 
 /*** [Time Quantum] ***********************************************************/
@@ -107,9 +107,11 @@
 /* Option to start full or empty */
 #define K_DEF_MBOX_INIT_FLAGS		  (ON)
 
+/* Set-get 32-bit values */
+#define K_DEF_MBOX_SETGET			  (ON)
 
 /* Enable asynchronous methods */
-#define K_DEF_AMBOX                   (OFF)
+#define K_DEF_AMBOX                   (ON)
 
 #if (K_DEF_SYNCH_MBOX==ON)
 

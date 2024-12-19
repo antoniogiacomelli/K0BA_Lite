@@ -127,14 +127,6 @@ VOID kSemaWait(K_SEMA* const kobj, TICK const timeout);
 VOID kSemaSignal(K_SEMA* const kobj);
 
 
-
-K_ERR kSemaAttmpt(K_SEMA* const kobj, TICK nAttmpts);
-/**
- * \brief           Returns the semaphore counter value
- *
- * \param kobj      Semaphore address
- * \return          Semaphore counter value
- */
 INT32 kSemaQuery(K_SEMA* const kobj);
 
 #endif
@@ -182,14 +174,12 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
  * \brief               Initialises an indirect blocking mailbox.
  *
  * \param kobj          Mailbox address.
- * \param buf			Mailbox storage address.
- * \param mailSize		Mail size.
  * \param initFull		Initialise full.
  * \param initMail		If initialising full, address of the message to
  * 						be copyied.
  * \return              K_SUCCESS or specific error.
  */
-K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize, BOOL initFull,
+K_ERR kMboxInit(K_MBOX *const kobj, BOOL initFull,
 		ADDR initMail);
 /**
  * \brief			   Name a mailbox as a direct channel for a task.
@@ -216,7 +206,7 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout);
  * \param timeout		Suspension time-out
  * \return				K_SUCCESS or specific error.
  */
-K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID* senderIDPtr,
+K_ERR kMboxRecv(K_MBOX *const kobj, ADDR* recvPPtr, TID* senderIDPtr,
 		TICK timeout);
 
 /**

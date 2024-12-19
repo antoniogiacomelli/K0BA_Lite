@@ -395,6 +395,14 @@ K_ERR kMutexLock(K_MUTEX *const kobj, TICK timeout)
 			return (K_ERR_TIMEOUT);
 		}
 	}
+	else
+	{
+		if (kobj->ownerPtr==runPtr)
+		{ /* recursive lock ? why ? WHYYYYYYYYYYY*/
+			K_EXIT_CR
+			return (K_ERR_MUTEX_REC_LOCK);
+		}
+	}
 
 	K_EXIT_CR
 	return (K_SUCCESS);

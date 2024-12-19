@@ -140,6 +140,14 @@ struct kEvent
 
 };
 
+struct kEventGroup
+{
+	struct kEvent event;
+	UINT32 currentFlags;
+	UINT32 expectedFlags;
+};
+
+
 #if (K_DEF_PIPE == ON) /* still within kdefsleepwake*/
 
 struct kPipe
@@ -254,6 +262,8 @@ struct kTimer
 	K_TIMER* nextPtr; /* Next timer in the queue */
 	BOOL init;
 } __attribute__((aligned));
+
+
 
 /*[EOF]*/
 #ifdef __cplusplus
