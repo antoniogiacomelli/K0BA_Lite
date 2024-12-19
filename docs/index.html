@@ -464,7 +464,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#events_sleepwake">4.6. Events (Sleep/Wake)</a></li>
 <li><a href="#remarks_on_synch_services">4.7. Remarks on synch services</a></li>
 <li><a href="#message_passing">4.8. Message Passing</a></li>
-<li><a href="#pipes">4.9. Pipes</a></li>
+<li><a href="#remarks_on_message_passing">4.9. Remarks on Message Passing</a></li>
+<li><a href="#pipes">4.10. Pipes</a></li>
 </ul>
 </li>
 </ul>
@@ -1543,24 +1544,97 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 </li>
 </ul>
 </div>
-<hr>
-<div class="paragraph data-line-693">
-<p>Mailboxes are the only channel that has <em>naming</em> as a service, because synchronous message passing as an end-to-end communication is a pattern used on client-server - a request followed by an answer. A message queue makes sense when clients will grab an answer asynchronously, what is less common. Remember you can always enforce naming with logic.</p>
 </div>
-<hr>
-<div class="exampleblock data-line-699">
+</div>
+<div class="sect2 data-line-691">
+<h3 id="remarks_on_message_passing">4.9. Remarks on Message Passing</h3>
+<div class="ulist data-line-693">
+<ul>
+<li class="data-line-693">
+<p>Mailboxes are designed for event-driven synchronization and direct end-to-end communication between tasks, often in client-server models or scenarios where message-as-an-event is the primary intent. Their single-message capacity and simple semantics make them optimal for 1-1 command response patterns that need to run in lockstep.</p>
+</li>
+<li class="data-line-695">
+<p>Queues involve buffer management, making them better suited for data-centric use cases like telemetry, logging, or serialization.
+They can accommodate many-to-many patterns, while mailboxes are inherently one-to-one.
+The asynchronous behavior s makes them more versatile but less predictable for real-time control loops.</p>
+</li>
+<li class="data-line-699">
+<p>Pump-drop queues are suitable for one-to-many patterns, when the consumer is concerned on with the most recent data, not the historical of messages.</p>
+</li>
+</ul>
+</div>
+<table class="tableblock frame-all grid-all stretch data-line-702">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><strong>Scenario</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Mailbox</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Queue</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Pump-Drop Queue</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One-to-One Command-Response</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅Tight coupling ensures correctness</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐 Complexity adds no value</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐 overhead for irrelevant data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control Loops (Latest Data Only)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐High risk of acting on stale data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐Potential for outdated data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Ensures latest data is available</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Many Producers to One Consumer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐Bottlenecked by blocking producers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Handles multiple producers gracefully</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Non-blocking semantics scale well</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Event Synchronization</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Clear event-driven semantics</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Guarantees ordering in the queue</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐 no guarantee of event ordering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Logging or Audit Trails</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Guarantees message delivery</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Preserves all messages for analysis</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐miss intermediate updates</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High Throughput with Bursts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐locking limits producer speed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Buffers multiple messages effectively</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐focused on latest data only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time-Ordered Data Processing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐 single-message focus</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">✅ Natural FIFO behavior for order</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">😐 no message tracking</p></td>
+</tr>
+</tbody>
+</table>
+<div class="exampleblock data-line-723">
 <div class="content">
-<div class="paragraph data-line-700">
+<div class="paragraph data-line-724">
 <p>In UNIX a <em>broken pipe</em> is a pipe with writers but no
 readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinforces the idea that there is not such a thing as valid never-received data.</p>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="sect2 data-line-705">
-<h3 id="pipes">4.9. Pipes</h3>
-<table class="tableblock frame-all grid-all stretch data-line-709">
+<div class="sect2 data-line-729">
+<h3 id="pipes">4.10. Pipes</h3>
+<table class="tableblock frame-all grid-all stretch data-line-733">
 <colgroup>
 <col style="width: 100%;">
 </colgroup>
@@ -1572,12 +1646,6 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Circular Buffer</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Free space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Occupied space</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Write pointer</p></td>
@@ -1596,7 +1664,7 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 </tr>
 </tbody>
 </table>
-<div class="paragraph data-line-721">
+<div class="paragraph data-line-743">
 <p>Pipes transmit streams of bytes - unlike queues or mailboxes
 that transmit 'objects' with a format. They are fast because data does
 not move, what moves is the read/write pointer within the pipe buffer.
@@ -1604,24 +1672,24 @@ A writer stops its operation when the N specified bytes have been
 written, or there is no more room. In the last case it goes to sleep until
 a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
-<div class="paragraph data-line-728">
+<div class="paragraph data-line-750">
 <p>A reader reads until N specified bytes were read or when there is no more data. In the last case it will sleep, to be waken by a writer.</p>
 </div>
-<div class="paragraph data-line-730">
+<div class="paragraph data-line-752">
 <p>Both one-to-many and many-to-one channels are possible - those who wake need to themselves ensure precedence.</p>
 </div>
-<div class="paragraph data-line-732">
+<div class="paragraph data-line-754">
 <p>A handy use of these pipe is combining two for <em>double buffering</em>.</p>
 </div>
-<div class="paragraph data-line-734">
+<div class="paragraph data-line-756">
 <p>As on V0.3.0, they depend on <em>sleep-wake</em> mechanism.</p>
 </div>
-<div class="paragraph data-line-736">
+<div class="paragraph data-line-758">
 <p>You cannot usem them within ISRs, in no occasion.</p>
 </div>
-<div class="ulist data-line-739">
+<div class="ulist data-line-761">
 <ul>
-<li class="data-line-739">
+<li class="data-line-761">
 <p>Pipes can be enabled/disabled in <code>kconfig.h</code></p>
 </li>
 </ul>
