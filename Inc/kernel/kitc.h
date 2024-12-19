@@ -57,7 +57,7 @@ static inline K_ERR kEventInit(K_EVENT* const kobj)
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
-	kobj->timeoutNode.objectType = TIMEOUT_EVENT;
+	kobj->timeoutNode.objectType = EVENT;
     return (K_SUCCESS);
 }
 VOID kEventSleep(K_EVENT* const, TICK);

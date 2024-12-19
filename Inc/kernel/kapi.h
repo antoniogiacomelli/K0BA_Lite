@@ -176,19 +176,23 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
  *******************************************************************************/
 
 #if (K_DEF_MBOX == ON)
-
+#define EMPTY (0)
+#define FULL  (1)
 /**
  * \brief               Initialises an indirect blocking mailbox.
  *
  * \param kobj          Mailbox address.
  * \param buf			Mailbox storage address.
  * \param mailSize		Mail size.
+ * \param initFull		Initialise full.
+ * \param initMail		If initialising full, address of the message to
+ * 						be copyied.
  * \return              K_SUCCESS or specific error.
  */
-K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize);
-
+K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize, BOOL initFull,
+		ADDR initMail);
 /**
- * \brief			   Name a mailbox creating a direct channel for a task.
+ * \brief			   Name a mailbox as a direct channel for a task.
  * \param kobj		   Mailbox address
  * \param id		   Task ID.
  * \return			   K_ERROR / K_SUCCESS
@@ -433,8 +437,9 @@ UINT32 kEventQuery(K_EVENT* const kobj);
  */
 
 /* Timer Reload / Oneshot optionss */
-#define RELOAD      1
-#define ONESHOT     0
+#define RELOAD      		1
+#define ONESHOT    		    0
+#define K_WAIT_FOREVER      0
 
 K_ERR kTimerInit(STRING timerName, TICK const ticks, CALLOUT const funPtr,
         ADDR const argsPtr, BOOL const reload);

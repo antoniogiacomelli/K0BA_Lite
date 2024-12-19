@@ -99,7 +99,7 @@ static K_ERR kTimerListAdd_(K_TIMER **selfPtr, STRING timerName, TICK ticks,
 	K_TIMER *newTimerPtr = kTimerGet();
 	if (newTimerPtr == NULL)
 	{
-		return (K_ERROR);
+		return (K_ERR_TIMER_POOL_EMPTY);
 	}
 	newTimerPtr->timerName = timerName;
 	newTimerPtr->dTicks = ticks;
@@ -344,9 +344,7 @@ VOID kRemoveTaskFromEvent(ADDR kobj)
     }
 }
 
-/*
-TODO: order by time or delta
-*/
+
 VOID kHandleTimeoutList(void)
 {
 	K_TIMEOUT_NODE **currentPtr = &timeOutListHeadPtr;
@@ -369,19 +367,19 @@ VOID kHandleTimeoutList(void)
 			/* Handle the timeout for the associated kernel object */
 			switch (node->objectType)
 			{
-			case TIMEOUT_MBOX:
+			case MAILBOX:
 				kRemoveTaskFromMbox(node->kobj);
 				break;
-			case TIMEOUT_SEMA:
+			case SEMAPHORE:
 				kRemoveTaskFromSema(node->kobj);
 				break;
-			case TIMEOUT_MUTEX:
+			case MUTEX:
 				kRemoveTaskFromMutex(node->kobj);
 				break;
-			case TIMEOUT_QUEUE:
+			case MESGQUEUE:
 				kRemoveTaskFromQueue(node->kobj);
 				break;
-			case TIMEOUT_EVENT:
+			case EVENT:
 					kRemoveTaskFromEvent(node->kobj);
 					break;
 			default:

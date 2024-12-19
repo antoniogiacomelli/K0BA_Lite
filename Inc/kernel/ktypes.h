@@ -70,60 +70,62 @@ typedef void (*CBK)(void*); /* Generic Call Back             */
  */
 typedef enum kErr
 {
-/*TODO: TRIM RET VALS FOR EACH KERNEL OBJECT:*/
-/*TODO: PRUNE UNUSED RETURNS				*/
 
     /* SUCCESSFUL: 0U */
     K_SUCCESS              = 0U, /* No Error */
 
     /* INFO OR UNSUCCESSFUL-NON-FAULTY RETURN VALUES: positive   */
-    K_ERR_ATTMPT_TIMEOUT   = 0x1,
-    K_ERR_AMBOX_FULL       = 0x2, /* Writing to a nonblocking full mailbox */
-    K_ERR_AMBOX_EMPTY      = 0x3, /* Reading from a nonblocking empty mailbox  */
-    K_QUERY_MBOX_EMPTY     = 0x4,
-    K_QUERY_MBOX_FULL      = 0x5,
-    K_QUERY_MUTEX_LOCKED   = 0x6,
-    K_QUERY_MUTEX_UNLOCKED = 0x7,
+    K_ERR_TIMEOUT		   = 0x1,
+    K_QUERY_MBOX_EMPTY     = 0x2,
+    K_QUERY_MBOX_FULL      = 0x3,
+    K_QUERY_MUTEX_LOCKED   = 0x4,
+    K_QUERY_MUTEX_UNLOCKED = 0x5,
+	K_ERR_MBOX_FULL	   	   = 0x6,
+	K_ERR_MBOX_SIZE		   = 0x7,
+	K_ERR_MBOX_EMPTY	   = 0x8,  /* isr read from an empty mailbox */
+	K_ERR_MBOX_ISR		   = 0x9,
+	K_ERR_MBOX_NO_WAITERS  = 0xA,
+	K_ERR_MESGQ_FULL	   = 0xB,
+	K_ERR_MESGQ_EMPTY	   = 0xC,
 
-    /* FAULTY RETURN VALUES: negative */
+	/* FAULTY RETURN VALUES: negative */
     K_ERROR 			  	    = (int)0xFFFFFFFF, /* (0xFFFFFFFF) Generic error placeholder */
-    K_ERR_OBJ_NULL 		 	    = (int)0xFFFFFFFE, /* A null object was passed as a parameter */
-    K_ERR_LIST_ITEM_NOT_FOUND   = (int)0xFFFFFFFD, /* Item not found on a K_LIST */
-    K_ERR_LIST_EMPTY 		    = (int)0xFFFFFFFC, /* Empty list */
-    K_ERR_MESG_SIZE 		    = (int)0xFFFFFFFB, /* Invalid message size */
-    K_ERR_MEM_INIT 			    = (int)0xFFFFFFFA, /* Error initialising memory control block */
-    K_ERR_MEM_FREE 			    = (int)0xFFFFFFF9, /* Error when freeing an allocated memory */
-    K_ERR_MEM_ALLOC 		    = (int)0xFFFFFFF8, /* Error allocating memory */
-    K_ERR_INVALID_TID 		    = (int)0xFFFFFFF7, /* Invalid user-assigned task IDs are 0 or 255*/
-    K_ERR_INVALID_Q_SIZE 	    = (int)0xFFFFFFF6, /* Maximum message queue size is 255 items */
-    K_ERR_INVALID_QMESG_SIZE    = (int)0xFFFFFFF5, /* Maximum message for a message queue is 255 bytes */
-    K_ERR_INVALID_BYTEPOOL_SIZE = (int)0xFFFFFFF4, /* Maximum byte pool size is 255 bytes (254 effective) */
-    K_ERR_OBJ_NOT_INIT 			= (int)0xFFFFFFF3, /* Tried to use an unitialised kernel object */
-    K_ERR_SYS_MESG_GET 		    = (int)0xFFFFFFF2, /* Could not get a mesg buffer from the system pool */
-    K_ERR_SYS_MESG_PUT 			= (int)0xFFFFFFF1, /* Could not return a mesg buffer to the system pool */
-    K_ERR_MEM_CPY 				= (int)0xFFFFFFF0, /* Error when copying a chunk of bytes from one addr to other */
-    K_ERR_INVALID_PRIO 			= (int)0xFFFFFFEF, /* Valid task priority range: 0-31. */
-    K_ERR_MUTEX_NOT_LOCKED 		= (int)0xFFFFFFEE, /* Tried to lock an unlocked mutex */
-    K_ERR_MUTEX_NOT_OWNER 		= (int)0xFFFFFFED, /* Tried to unlock an owned mutex */
-	/* gap  */
-    K_ERR_RESERVED 				= (int)0xFFFFFFE8, /* 'reserved' often is used so design mistakes seem upcoming features */
-    /* gap */
-	K_ERR_MESG_CPY 				= (int)0xFFFFFFE5, /* Failure when copying (recv/send) mesg/mail */
-    K_ERR_PDBUF_SIZE 			= (int)0xFFFFFFE4, /* Invalid size of mesg attached to a PD Buffer */
-    K_ERR_SEM_INVALID_VAL 		= (int)0xFFFFFFE3, /* Invalid semaphore value */
-    K_ERR_QUERY_UNDEFINED 		= (int)0xFFFFFFE2, /* Undefined query state for a kobj */
-    K_ERR_TASK_NOT_RUNNING 		= (int)0xFFFFFFE1,
-    K_ERR_INVALID_TSLICE 		= (int)0xFFFFFFE0,
-	K_ERR_MESGQ_NO_BUFFER 		= (int)0xFFFFFFD9, /* Trying to send/recv copy from a queue with
+
+	K_ERR_OBJ_NULL 		 	    = (int)0xFFFF0000, /* A null object was passed as a parameter */
+    K_ERR_OBJ_NOT_INIT 			= (int)0xFFFF0001, /* Tried to use an unitialised kernel object */
+
+    K_ERR_LIST_ITEM_NOT_FOUND   = (int)0xFFFF0002, /* Item not found on a K_LIST */
+    K_ERR_LIST_EMPTY 		    = (int)0xFFFF0003, /* Empty list */
+
+	K_ERR_MEM_INIT 			    = (int)0xFFFF0004, /* Error initialisi0008g memory control block */
+    K_ERR_MEM_FREE 			    = (int)0xFFFF0005, /* Error when freeing an allocated memory */
+    K_ERR_MEM_ALLOC 		    = (int)0xFFFF0006, /* Error allocating memory */
+
+	K_ERR_TIMER_POOL_EMPTY		= (int)0xFFFF0007,
+
+
+    K_ERR_INVALID_TID 		    = (int)0xFFFF0008, /* Invalid user-assigned task IDs are 0 or 255*/
+	K_ERR_INVALID_PRIO 			= (int)0xFFFF0009, /* Valid task priority range: 0-31. */
+
+	K_ERR_INVALID_QUEUE_SIZE    = (int)0xFFFF000A, /* Maximum message queue size is 255 items */
+    K_ERR_INVALID_MESG_SIZE     = (int)0xFFFF000B, /* Maximum message for a message queue is 255 bytes */
+
+	K_ERR_MEM_CPY 				= (int)0xFFFF000C, /* Error when copying a chunk of bytes from one addr to other */
+
+    K_ERR_PDBUF_SIZE 			= (int)0xFFFF000D, /* Invalid size of mesg attached to a PD Buffer */
+
+	K_ERR_SEM_INVALID_VAL 		= (int)0xFFFF000E, /* Invalid semaphore value */
+
+	K_ERR_QUERY_UNDEFINED 		= (int)0xFFFF000F, /* Undefined query state for a kobj */
+    K_ERR_TASK_NOT_RUNNING 		= (int)0xFFFF0010,
+    K_ERR_INVALID_TSLICE 		= (int)0xFFFF0011,
+	K_ERR_MESGQ_NO_BUFFER 		= (int)0xFFFF0012, /* Trying to send/recv copy from a queue with
 													  unknown buffering address */
-	K_ERR_MBOX_INIT 			= (int)0xFFFFFFD8,
-	K_ERR_NAMED_MBOX_SEND_SELF  = (int)0xFFFFFFD7, /* named channel cant sent do itself */
-	K_ERR_NAMED_MBOX_RECV		= (int)0xFFFFFFD6, /* a named mbox can only accept recv its assigned task */
-	K_ERR_MBOX_EMPTY			= (int)0xFFFFFFD5,  /* isr read from an empty mailbox */
-	K_ERR_MBOX_FULL				= (int)0xFFFFFFD4,
-	K_ERR_MBOX_SIZE				= (int)0xFFFFFFC3,
-	K_ERR_MBOX_ISR				= (int)0xFFFFFFC2,
-	K_ERR_TIMEOUT				= (int)0xFFFFFFC1
+	K_ERR_NAMED_MBOX_SEND_SELF  = (int)0xFFFF0013, /* named channel cant sent do itself */
+	K_ERR_NAMED_MBOX_RECV		= (int)0xFFFF0014, /* a named mbox can only accept recv its assigned task */
+	K_ERR_MBOX_INIT_MAIL		= (int)0xFFFF0015
+
+
 
 } K_ERR;
 
@@ -171,14 +173,6 @@ typedef enum
     MESGQ_FULL		=    2
 }K_MESGQ_STATUS;
 
-typedef enum
-{
-	MAILBOX,
-	AMAILBOX,
-	MESGQUEUE,
-	PDQUEUE,
-	PIPE
-}K_CHAN_TYPE;
 
 /**
  * \brief Task status
@@ -186,19 +180,15 @@ typedef enum
 typedef enum kTaskStatus
 {
     INVALID = 0,
-    /*---------------------------------------------------------*/
     READY,
-    /*---------------------------------------------------------*/
     RUNNING,
-    /*------------------------WAITING--------------------------*/
+    /* WAITING */
     PENDING,
     SLEEPING,
     BLOCKED,
-    SENDING,
-    RECEIVING,
     SUSPENDED,
-    /*---------------------------------------------------------*/
-    ATTEMPTING /*** Trying to acquire a resource.              */
+    SENDING,
+    RECEIVING
 
 } K_TASK_STATUS;
 

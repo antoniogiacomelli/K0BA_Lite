@@ -16,6 +16,22 @@ extern "C" {
 
 #include "ktypes.h"
 
+
+typedef enum
+{
+    MAILBOX,
+    SEMAPHORE,
+    MUTEX,
+    MESGQUEUE,
+	EVENT
+	/*
+	PIPE,
+	TIMER,
+	TCB,
+	*/
+} K_OBJ_TYPE;
+
+
 struct kListNode
 {
 	struct kListNode* nextPtr; /* Pointer to next node */
@@ -35,6 +51,7 @@ struct kTcb
 	UINT32* sp;           /* Saved stack pointer */
 	K_TASK_STATUS status; /* Task status */
 	UINT32 runCnt;        /* Dispatch count */
+    BOOL   yield;		  /* Relinquished			   */
 	UINT32* stackAddrPtr; /* Stack address */
 	UINT32 stackSize;     /* Stack size */
 	PID pid;              /* System-defined task ID */
@@ -42,15 +59,13 @@ struct kTcb
 	PRIO priority;        /* Task priority (0-31) 32 is invalid */
 	PRIO realPrio;        /* Real priority (for prio inheritance) */
 #if (K_DEF_SCH_TSLICE == ON)
-	TICK timeSlice;       /* Time-slice duration 		   */
+	TICK timeSlice;       /* Time-slice duration 	   */
 	TICK timeLeft;        /* Remaining time-slice 	   */
 #endif
 	STRING taskName;      /* Task name */
     BOOL runToCompl;      /* Cooperative-only task     */
 	TICK busyWaitTime;    /* Busy-Delay in ticks 	   */
-    TICK   attmptCntr;      /* Trying to access CR 	   */
-    K_TCBQ* timeOutQueue;
-    BOOL   timeOut;
+    BOOL   timeOut;		  /* Blocking time-out		   */
 /*--- RESOURCES-----------------------------------------*/
 #if (K_DEF_SEMA == ON)
     K_SEMA* pendingSema;
@@ -81,22 +96,12 @@ struct kRunTime
 	UINT32 nWraps; /* Number of tick wraps */
 };
 
-typedef enum
-{
-    TIMEOUT_MBOX,
-    TIMEOUT_SEMA,
-    TIMEOUT_MUTEX,
-    TIMEOUT_QUEUE,
-	TIMEOUT_EVENT
-} K_TIMEOUT_OBJ;
-
-
 typedef struct kTimeoutNode
 {
     struct kTimeoutNode *nextPtr; /* Pointer to the next node in the timeout list */
     TICK timeout;               /* Timeout counter */
     ADDR kobj;         /* Pointer to the kernel object (e.g., semaphore, mailbox) */
-    K_TIMEOUT_OBJ objectType; /* Type of the kernel object */
+    K_OBJ_TYPE objectType; /* Type of the kernel object */
 } K_TIMEOUT_NODE;
 
 

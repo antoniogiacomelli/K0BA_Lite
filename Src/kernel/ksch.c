@@ -552,7 +552,6 @@ BOOL kTickHandler(void)
 #if (K_DEF_SCH_TSLICE==ON)
     BOOL tsliceDue = FALSE;
 #endif
-	BOOL readyAttmptTask = FALSE;
 	BOOL readySleepTask = FALSE;
 	BOOL timeOutTask = FALSE;
 	BOOL ret = FALSE;
@@ -615,10 +614,9 @@ BOOL kTickHandler(void)
 		kReadyRunningTask_();
 	}
 #endif
-
 	ret = (!runToCompl)
-			& ((runPtr->status == READY) | readyAttmptTask | readySleepTask
-					| timeOutTask);
+			& ((runPtr->status == READY) | readySleepTask | timeOutTask
+					| (runPtr->yield == TRUE));
 	return (ret);
 }
 
@@ -658,6 +656,10 @@ VOID kSchSwtch(VOID)
 	{
 		runPtr->nPreempted += 1U;
 		prevRunPtr->preemptedBy = runPtr->pid;
+	}
+	if (runPtr->yield)
+	{
+		runPtr->yield = FALSE;
 	}
 	return;
 }

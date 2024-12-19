@@ -40,12 +40,6 @@
 #error "You need a compiler with stddef.h library."
 #endif
 
-#if (K_DEF_MESGQ == ON)
-#if (K_DEF_N_MESG <=0 )
-#   error "Number of message buffers must be greater than 0"
-#endif
-#endif
-
 #if (K_DEF_MIN_PRIO > 31)
 #	error "Invalid minimal effective priority. (Max numerical value: 31)"
 #endif

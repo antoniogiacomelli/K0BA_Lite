@@ -195,7 +195,7 @@ K_ERR kSemaInit(K_SEMA *const kobj, INT32 const value)
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
-	kobj->timeoutNode.objectType = TIMEOUT_SEMA;
+	kobj->timeoutNode.objectType = SEMAPHORE;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -337,7 +337,7 @@ K_ERR kMutexInit(K_MUTEX *const kobj)
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
-	kobj->timeoutNode.objectType = TIMEOUT_MUTEX;
+	kobj->timeoutNode.objectType = MUTEX;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -426,8 +426,7 @@ VOID kMutexUnlock(K_MUTEX *const kobj)
 	/* runPtr is the owner and mutex was locked */
 	if (kobj->waitingQueue.size == 0)
 	{
-		kobj->lock = FALSE
-		;
+		kobj->lock = FALSE;
 		kobj->ownerPtr->priority = kobj->ownerPtr->realPrio;
 		kobj->ownerPtr->pendingMutx = NULL;
 		tcbPtr = kobj->ownerPtr;

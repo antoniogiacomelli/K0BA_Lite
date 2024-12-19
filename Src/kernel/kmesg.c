@@ -29,7 +29,13 @@
  ******************************************************************************/
 #if (K_DEF_MBOX==ON)
 
-K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize)
+K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize
+#if  (K_DEF_MBOX_INIT_FLAGS == ON)
+		,
+		BOOL initFull,
+		ADDR initMail
+#endif
+		)
 {
 	K_CR_AREA
 	K_ERR err = -1;
@@ -51,6 +57,21 @@ K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize)
 
 	kobj->mailPtr = buf;
 	kobj->mailSize = mailSize;
+#if (K_DEF_MBOX_INIT_FLAGS==ON)
+	if (initFull)
+	{
+		if (initMail==NULL)
+		{
+			return (K_ERROR);
+		}
+		UINT32 err;
+		CPY(kobj->mailPtr, initMail, mailSize, err);
+		if (err != mailSize)
+		{
+			return (K_ERR_MEM_CPY);
+		}
+	}
+#endif
 	kobj->mboxState = MBOX_EMPTY;
 	kobj->channel = NULL;
 
@@ -62,7 +83,7 @@ K_ERR kMboxInit(K_MBOX *const kobj, ADDR buf, BYTE mailSize)
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
-	kobj->timeoutNode.objectType = TIMEOUT_MBOX;
+	kobj->timeoutNode.objectType = MAILBOX;
 	kobj->init = TRUE;
 	K_EXIT_CR
 	return (err);
@@ -133,7 +154,9 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 #endif
 		runPtr->status = SENDING;
 		if (timeout > 0)
+		{
 			kTimeOut(&kobj->timeoutNode, timeout);
+		}
 		if ((kobj->owner != NULL) && (runPtr->priority < kobj->owner->priority))
 		{
 			kobj->owner->priority = runPtr->priority;
@@ -237,8 +260,8 @@ K_ERR kMboxRecv(K_MBOX *const kobj, ADDR recvPtr, TID *senderIDPtr,
 
 	K_PEND_CTXTSWTCH
 	K_EXIT_CR
+	/* resumed here */
 	K_ENTER_CR
-
 	if ((kobj->owner != NULL)
 			&& (kobj->owner->priority != kobj->owner->realPrio))
 	{
@@ -294,7 +317,6 @@ K_ERR kMboxAsend(K_MBOX *const kobj, ADDR const sendPtr)
 		K_EXIT_CR
 		return (K_ERR_NAMED_MBOX_SEND_SELF);
 	}
-	/* a reader is yet to read */
 	if (kobj->mboxState == MBOX_FULL)
 	{
 		K_EXIT_CR
@@ -446,10 +468,17 @@ K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR const buffer, SIZE const mesgSize,
 {
 	K_CR_AREA
 
-	if ((kobj == NULL) || (buffer == NULL) || (mesgSize == 0)
-			|| (nMesg == 0))
+	if ((kobj == NULL) || (buffer == NULL))
 	{
-		return (K_ERROR);
+		return (K_ERR_OBJ_NULL);
+	}
+	if (mesgSize == 0)
+	{
+		return (K_ERR_INVALID_MESG_SIZE);
+	}
+	if (nMesg == 0)
+	{
+		return (K_ERR_INVALID_QUEUE_SIZE);
 	}
 
 	K_ENTER_CR
@@ -474,7 +503,7 @@ K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR const buffer, SIZE const mesgSize,
 	kobj->timeoutNode.nextPtr = NULL;
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
-	kobj->timeoutNode.objectType = TIMEOUT_QUEUE;
+	kobj->timeoutNode.objectType = MESGQUEUE;
 	K_EXIT_CR
 
 	return (K_SUCCESS);
@@ -622,6 +651,35 @@ K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK const timeout)
 	return (K_SUCCESS);
 }
 
+K_ERR kMesgQPeek(K_MESGQ *const kobj, ADDR recvPtr)
+{
+	K_CR_AREA
+
+	if ((kobj == NULL) || (recvPtr == NULL) || (kobj->init == 0))
+	{
+		return (K_ERROR);
+	}
+
+	K_ENTER_CR
+
+	if (kobj->mesgCnt == 0)
+	{
+		K_EXIT_CR
+		return (K_ERR_MESGQ_EMPTY);
+	}
+	BYTE const *src = kobj->buffer + (kobj->readIndex * kobj->mesgSize);
+	BYTE *dest = (BYTE*) recvPtr;
+	SIZE err = 0;
+	CPYQ(dest, src, kobj->mesgSize, err);
+	if (err != kobj->mesgSize)
+	{
+		K_EXIT_CR
+		return (K_ERR_MEM_CPY);
+	}
+	K_EXIT_CR
+	return (K_SUCCESS);
+}
+
 K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr)
 {
 	K_CR_AREA
@@ -683,35 +741,87 @@ K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr)
 	return (K_SUCCESS);
 }
 
+#if (K_DEF_AMESGQ==ON)
+
+K_ERR kMesgARecv(K_MESGQ *const kobj, ADDR recvPtr)
+{
+	K_CR_AREA
+
+	if ((kobj == NULL) || (recvPtr == NULL) || (kobj->init == 0))
+	{
+		return (K_ERROR);
+	}
+
+	K_ENTER_CR
+
+	if (kobj->mesgCnt == 0)
+	{
+		K_EXIT_CR
+		return (K_ERR_MESGQ_EMPTY);
+	}
+	BYTE const *src = kobj->buffer + (kobj->readIndex * kobj->mesgSize);
+	BYTE *dest = (BYTE*) recvPtr;
+	SIZE err = 0;
+	CPYQ(dest, src, kobj->mesgSize, err);
+	if (err != kobj->mesgSize)
+	{
+		K_EXIT_CR
+		return (K_ERR_MEM_CPY);
+	}
+	kobj->mesgCnt--;
+	K_EXIT_CR
+	return (K_SUCCESS);
+}
+
+K_ERR kMesgASend(K_MESGQ *const kobj, ADDR const sendPtr)
+{
+	K_CR_AREA
+
+	if ((kobj == NULL) || (sendPtr == NULL))
+		{
+			KFAULT(FAULT_NULL_OBJ);
+		}
+		if (!kobj->init)
+		{
+			KFAULT(FAULT_OBJ_NOT_INIT);
+		}
+	K_ENTER_CR
+	if (kobj->mesgCnt >= kobj->maxMesg) /*full*/
+	{
+		K_EXIT_CR
+		return (K_ERR_MESGQ_FULL);
+	}
+	BYTE *dest = kobj->buffer + (kobj->writeIndex * kobj->mesgSize);
+	BYTE const *src = (BYTE const*) sendPtr;
+	SIZE err = 0;
+	CPYQ(dest, src, kobj->mesgSize, err);
+	if (err != kobj->mesgSize)
+	{
+		K_EXIT_CR
+		return (K_ERR_MEM_CPY);
+	}
+	kobj->writeIndex = (kobj->writeIndex + 1) % kobj->maxMesg;
+	kobj->mesgCnt++;
+	kobj->state = (kobj->mesgCnt == kobj->maxMesg) ? MESGQ_FULL : MESGQ_PARTIAL;
+	K_EXIT_CR
+	return (K_SUCCESS);
+}
+#endif
+
 #endif /*K_DEF_MESGQ*/
 
 #if (K_DEF_PDQ == ON)
 
 /******************************************************************************
  * PUMP-DROP QUEUE (CYLICAL ASYNCHRONOUS BUFFERS)
- ******************************************************************************/
-/* [downbeat funky bass]      */
-/* (back:make it drop!)       */
-/* intro:                     */
-/* embdded is full with       */
-/* queues that clawg so i show*/
-/* ya a solution i knowz      */
-/* this isnt  mine, u can see */
-/* the project HAR-TIK        */
-
-/* nooow,                     */
-/* first ya  reserve it       */
-/* then ya attach             */
-/* where resides a  chunk     */
-/* with dat info to pass      */
-/* then ya can pump it        */
-/* yo, ya wanna pump no air   */
-/* needa mind the scope       */
-/* cuz' no copy  I pass       */
-/* u best use d'allocator     */
-/* my homie b4da55            */
-/* here no heap will trip     */
-/* we dont frag an address    */
+ ******************************************************************************
+ * Producer:
+ * reserve - write - pump
+ *
+ * Consumer:
+ * fetch - read - drop
+ *
+ **/
 
 K_ERR kPDQInit(K_PDQ *const kobj, K_PDBUF *bufPool, BYTE nBufs)
 {
@@ -760,7 +870,7 @@ K_ERR kPDBufWrite(K_PDBUF *bufPtr, ADDR srcPtr, SIZE dataSize)
 		err = K_ERR_PDBUF_SIZE;
 		goto EXIT;
 	}
-	bufPtr->dataPtr = srcPtr;
+	CPY(bufPtr->dataPtr, srcPtr, dataSize, err);
 	bufPtr->dataSize = dataSize;
 	EXIT:
 	K_EXIT_CR
@@ -815,10 +925,7 @@ K_ERR kPDBufRead(K_PDBUF *bufPtr, ADDR destPtr)
 		err = K_ERR_OBJ_NULL;
 		goto EXIT;
 	}
-	if (destPtr != NULL)
-	{
-		CPY(destPtr, bufPtr->dataPtr, bufPtr->dataSize, err);
-	}
+	CPY(destPtr, bufPtr->dataPtr, bufPtr->dataSize, err);
 	EXIT:
 	K_EXIT_CR
 	return (err);
@@ -858,6 +965,10 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 {
 	if (IS_NULL_PTR(kobj))
 		KFAULT(FAULT_NULL_OBJ);
+	if (kIsISR())
+	{
+
+	}
 	K_CR_AREA
 	K_ENTER_CR
 	K_ERR err = -1;
@@ -873,6 +984,7 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 	err = EVNTINIT(&(kobj->evRoom));
 	if (err < 0)
 		return (err);
+	kobj->init=TRUE;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -882,8 +994,12 @@ UINT32 kPipeRead(K_PIPE *const kobj, BYTE *destPtr, UINT32 nBytes)
 
 	K_CR_AREA
 	K_ENTER_CR
-	if (IS_NULL_PTR(kobj))
+	if (IS_NULL_PTR(kobj) || IS_NULL_PTR(destPtr))
 		KFAULT(FAULT_NULL_OBJ);
+	if (kobj->init==FALSE)
+	{
+		KFAULT(FAULT_OBJ_NOT_INIT);
+	}
 	UINT32 readBytes = 0;
 	if (nBytes == 0)
 		return (0);

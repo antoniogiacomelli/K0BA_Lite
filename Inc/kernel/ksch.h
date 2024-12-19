@@ -20,9 +20,8 @@ extern UINT32 idleStack[IDLE_STACKSIZE]; /* Stack for idle task */
 extern UINT32 timerHandlerStack[TIMHANDLER_STACKSIZE];
 extern K_TCBQ readyQueue[K_DEF_MIN_PRIO + 2]; /* Table of ready queues */
 extern K_TCBQ sleepingQueue;
-extern K_TCBQ attmptQueue;
 extern K_TCBQ timeOutQueue;
-extern volatile UINT32 nestedInterrupt;
+
 BOOL kSchNeedReschedule(K_TCB*);
 VOID kSchSwtch(VOID);
 UINT32 kEnterCR(VOID);

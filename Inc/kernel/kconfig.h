@@ -87,19 +87,28 @@
 
 #if (K_DEF_MESGQ == ON)
 
-/*** Number of system mesg records	*/
-#define K_DEF_N_MESG                  (32)
 /*** Blocking send()				*/
 #define K_DEF_MESGQ_BLOCK_FULL        (ON)
+
+/*** Asynch methods					*/
+#define K_DE_AMESGQ					  (ON)
+
 /*** Queue Discipline				*/
 #define K_DEF_MESGQ_ENQ	   (K_DEF_ENQ_PRIO)
+
 #endif /*mesgq*/
+
 #endif
 
 /*** [Mailbox] ****************************************************************/
 #define K_DEF_MBOX	                  (ON)
 
+/* Synchronous methdos*/
 #define K_DEF_SYNCH_MBOX			  (ON)
+
+/* Option to start full or empty */
+#define K_DEF_MBOX_INIT_FLAGS		  (ON)
+
 
 /* Enable asynchronous methods */
 #define K_DEF_AMBOX                   (OFF)
@@ -114,7 +123,7 @@
 
 /*** [Pump-Drop Queues] *******************************************************/
 
-#define K_DEF_PDQ                     (OFF)
+#define K_DEF_PDQ                     (ON)
 
 /*[EOF]*/
 
