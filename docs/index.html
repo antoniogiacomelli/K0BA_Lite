@@ -987,7 +987,7 @@ VOID Task1(VOID)
 	while (1)
 	{
 		counter1++;
-		kSemaWait(&amp;sema1);
+		kSemaWait(&amp;sema1, K_WAIT_FOREVER);
 	}
 }
 
@@ -998,7 +998,7 @@ VOID Task2(VOID)
 	{
 		counter2++;
 		kSemaSignal(&amp;sema1);
-		kSemaWait(&amp;sema2);
+		kSemaWait(&amp;sema2, K_WAIT_FOREVER);
 	}
 }
 
@@ -1008,7 +1008,7 @@ VOID Task3(VOID)
 	{
 		counter3++;
 		kSemaSignal(&amp;sema2);
-		kSemaWait(&amp;sema3);
+		kSemaWait(&amp;sema3, K_WAIT_FOREVER);
 	}
 }
 
