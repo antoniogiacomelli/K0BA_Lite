@@ -490,6 +490,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</a></li>
 <li><a href="#mailbox_client_server">18.2. Mailbox client-server</a></li>
+<li><a href="#synchronisation_barrier">18.3. Synchronisation Barrier</a></li>
 </ul>
 </li>
 </ul>
@@ -2055,6 +2056,92 @@ VOID Task3(VOID)
 <div class="imageblock data-line-1076">
 <div class="content">
 <img src="images/mboxchksm.png" alt="mboxchksm">
+</div>
+</div>
+</div>
+<div class="sect2 data-line-1078">
+<h3 id="synchronisation_barrier">18.3. Synchronisation Barrier</h3>
+<div class="listingblock data-line-1080">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">#include "application.h"
+#include &lt;stdlib.h&gt;
+UINT32 stack1[STACKSIZE];
+UINT32 stack2[STACKSIZE];
+UINT32 stack3[STACKSIZE];
+
+K_EVENT syncEvent;
+K_MUTEX syncMutex;
+UINT32  syncCounter;
+
+#define SYNC_CONDITION (syncCounter==2)
+
+static inline VOID synchBarrier(VOID)
+{
+		kprintf("Task %d  is synching...\n\r", runPtr-&gt;uPid);
+
+		if (!(SYNC_CONDITION))
+		{
+
+			kMutexLock(&amp;syncMutex, K_WAIT_FOREVER);
+			syncCounter+=1;
+			kMutexUnlock(&amp;syncMutex);
+			kEventSleep(&amp;syncEvent, K_WAIT_FOREVER);
+			/* wake and lock, big boss style */
+
+			kMutexLock(&amp;syncMutex, K_WAIT_FOREVER);
+			kprintf("Task %d owns resource...\n\r", runPtr-&gt;uPid);
+
+			/*-&gt; use resource &lt;- */
+
+          	kMutexUnlock(&amp;syncMutex);
+
+			return;
+		}
+		kprintf("Task %d will wake up all\n\r", runPtr-&gt;uPid);
+		syncCounter=0; /* reset */
+		kEventWake(&amp;syncEvent);
+}
+
+
+/*** Init kernel objects here */
+VOID kApplicationInit(VOID)
+{
+	kMutexInit(&amp;syncMutex);
+	syncCounter=0;
+}
+VOID Task1(VOID)
+{
+
+		while (1)
+		{
+			kSleep(5);
+			synchBarrier();
+		}
+}
+
+VOID Task2(VOID)
+{
+	while (1)
+	{
+		kSleep(8);
+		synchBarrier();
+	}
+}
+
+VOID Task3(VOID)
+{
+	while (1)
+		{
+			kSleep(3);
+			synchBarrier();
+		}
+
+}</code></pre>
+</div>
+</div>
+<div class="imageblock data-line-1157">
+<div class="content">
+<img src="images/syncbarr.png" alt="syncbarr">
 </div>
 </div>
 </div>
