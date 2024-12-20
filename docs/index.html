@@ -488,6 +488,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#pipes">17. Pipes</a></li>
 </ul>
 </li>
+<li><a href="#simple_usage_patterns">Simple Usage Patterns</a>
+<ul class="sectlevel1">
+<li><a href="#event_flags_with_a_mailbox">18. Event Flags with a mailbox</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -1731,6 +1736,240 @@ a reader wakes it up after 'extracting' from the pipe.</p>
 <p>Pipes can be enabled/disabled in <code>kconfig.h</code></p>
 </li>
 </ul>
+</div>
+</div>
+</div>
+<h1 id="simple_usage_patterns" class="sect0 data-line-765">Simple Usage Patterns</h1>
+<div class="sect1 data-line-767">
+<h2 id="event_flags_with_a_mailbox">18. Event Flags with a mailbox</h2>
+<div class="sectionbody">
+<div class="paragraph data-line-769">
+<p><strong>Board: STM Nucleo-F103RB</strong></p>
+</div>
+<div class="listingblock data-line-771">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">/*@FILE main.c */
+#include "kenv.h""
+#include "ksch.h"
+#include "application.h
+
+int main(void)
+{
+	HAL_Init();
+	MX_GPIO_Init();
+	SystemClock_Config();
+	USART2_Init();
+	SystemClock_Config();
+	SysTick_Config(K_DEF_TICK_PERIOD);
+	K_TICK_DIS
+	NVIC_SetPriorityGrouping(0);
+	NVIC_SetPriority(SVCall_IRQn, 0x07);
+	NVIC_SetPriority(SysTick_IRQn, 0x08);
+	NVIC_SetPriority(PendSV_IRQn, 0x08);
+	assert(
+			kCreateTask(Task1 , "Task1" , 1, stack1 , STACKSIZE, 1,
+			FALSE)==K_SUCCESS)
+			;
+	assert(
+			kCreateTask(Task2 , "Task2" , 2, stack2 , STACKSIZE, 1,
+			FALSE)==K_SUCCESS);
+	assert(
+	            kCreateTask(Task3 , "Task3" , 3, stack3 , STACKSIZE, 3,
+	            FALSE)==K_SUCCESS);
+	kInit();
+	while (1)
+	;
+}
+
+/*@file application.h */
+#ifndef APPLICATION_H
+#define APPLICATION_H
+#include "kenv.h"
+#include "kapi.h"
+
+extern UART_HandleTypeDef huart2;
+#define kprintf(...) \
+			do \
+			{ \
+				K_TICK_DIS \
+				printf(__VA_ARGS__); \
+				K_TICK_EN \
+			} while(0U)
+
+/*******************************************************************************
+ * TASK STACKS EXTERN DECLARATION
+ *******************************************************************************/
+#define STACKSIZE 128 /*you can define each stack with a specific
+ size*/
+
+extern UINT32 stack1[STACKSIZE];
+extern UINT32 stack2[STACKSIZE];
+extern UINT32 stack3[STACKSIZE];
+
+
+/*******************************************************************************
+ * TASKS ENTRY POINT PROTOTYPES
+ *******************************************************************************/
+VOID Task1(VOID);
+VOID Task2(VOID);
+VOID Task3(VOID);
+
+
+/******************************************************************************
+ * TASKS EXTERN OBJECTS
+ **/
+
+
+#endif /* APPLICATION_H */
+
+/* @file application.c */
+
+#include "application.h"
+
+
+int _write(int file, char* ptr, int len)
+{
+	int ret = len;
+	while (len)
+	{
+		while ( !(huart2.Instance-&gt;SR &amp; UART_FLAG_TXE))
+			;
+		huart2.Instance-&gt;DR = (char) ( *ptr) &amp; 0xFF;
+		while ( !(huart2.Instance-&gt;SR &amp; UART_FLAG_TC))
+			;
+		len --;
+		ptr ++;
+	}
+	return ret;
+}
+
+
+/*******************************************************************************
+ *
+ * Application Tasks Stacks
+ *
+ *******************************************************************************/
+
+/*
+ * Declare your stacks here
+ * They must be already extern data on application.h
+ */
+UINT32 stack1[STACKSIZE];
+UINT32 stack2[STACKSIZE];
+UINT32 stack3[STACKSIZE];
+
+/*******************************************************************************
+ * Customise your application init
+ * Declare/init app objects
+ * Declare  kernel objects: mutexes, semaphores, timers, etc.
+ *******************************************************************************/
+
+#define FLAG_TEMP_SENSOR_UPDATE       (1U &lt;&lt; 0)
+#define FLAG_HUM_SENSOR_UPDATE    (1U &lt;&lt; 1)
+#define FLAG_CO2_SENSOR_UPDATE   (1U &lt;&lt; 2)
+#define FLAG_FLOW_SENSOR_UPDATE   (1U &lt;&lt; 3)
+
+typedef enum
+{
+	TEMPERATURE = 1, HUMIDITY, CO2, FLOW
+} UPDATE_t;
+
+K_MBOX mbox;
+
+/*** Init kernel objects here */
+VOID kApplicationInit(VOID)
+{
+	kMboxInit(&amp;mbox, EMPTY, NULL);
+}
+
+VOID Task1(VOID)
+{
+	while (1)
+	{
+		UINT32 sendFlag = 0;
+		UPDATE_t updateType = 0;
+
+		while (1)
+		{
+			updateType = (updateType + 1);
+			if (updateType &gt; 4)
+			{
+				updateType = 1;
+			}
+			switch (updateType)
+			{
+			case (TEMPERATURE):
+				sendFlag = FLAG_TEMP_SENSOR_UPDATE;
+				break;
+			case (HUMIDITY):
+				sendFlag = FLAG_HUM_SENSOR_UPDATE;
+				break;
+			case (CO2):
+				sendFlag = FLAG_CO2_SENSOR_UPDATE;
+				break;
+			case (FLOW):
+				sendFlag = FLAG_FLOW_SENSOR_UPDATE;
+				break;
+			default:
+				break;
+			}
+			K_ERR err = kMboxSend(&amp;mbox, (ADDR) &amp;sendFlag, K_WAIT_FOREVER);
+			assert(err==0);
+		}
+
+	}
+}
+
+VOID Task2(VOID)
+{
+	UINT32 *rcvdFlag = 0;
+	TID senderPid = 0;
+	UINT32 wantedFlags = FLAG_TEMP_SENSOR_UPDATE | FLAG_HUM_SENSOR_UPDATE |
+	FLAG_CO2_SENSOR_UPDATE |
+	FLAG_FLOW_SENSOR_UPDATE;
+	UINT32 rcvdFlags = 0;
+	while (1)
+	{
+		 K_ERR err = kMboxRecv(&amp;mbox, (ADDR) &amp;rcvdFlag, &amp;senderPid,
+				 K_WAIT_FOREVER);
+		if (err == 0)
+		{
+			if (senderPid == 1)
+			{
+				rcvdFlags |= *rcvdFlag;
+				if (rcvdFlags == wantedFlags)
+				{
+					rcvdFlags = 0; /* clear rcvd flags */
+					kprintf("Task synchronized\n\r");
+					/* do work */
+				}
+				else
+				{
+					kprintf("Still missing a flag\n\r");
+					kBusyDelay(1);
+				}
+			}
+
+		}
+	}
+}
+
+
+VOID Task3(VOID)
+{
+	while (1)
+	{
+		kSleep(1);
+
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="imageblock data-line-990">
+<div class="content">
+<img src="images/mboxflags.png" alt="mboxflags">
+</div>
 </div>
 </div>
 </div>
