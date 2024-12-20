@@ -1218,7 +1218,7 @@ increased in its task control block. This counter is meant for some diagnostics.
 The lack of a control block associated with a direct signal makes it rudimentary but sufficient, justified by the negligible cost and the ubiquity of single-purpose event-driven tasks sitting idle until notified: after readied, the scheduler will take care of its dispatching, respecting the priority. No shared resource, no contention, no priority inversion.</p>
 </div>
 <div class="paragraph data-line-516">
-<p>Besides <code>pend()</code> there is also the primitive <code>suspend(id)</code> - a task suspends another - that switches to the <code>SUSPENDED</code> state. There is no criteria and any task can suspend any other. To resume a suspended task the same <code>signal(id)</code> is used as for tasks that pended themselves.</p>
+<p>Besides <code>pend()</code> there is also the primitive <code>suspend(id)</code> - a task suspends another - that switches to the <code>SUSPENDED</code> state. In this case, a task cannot suspend a higher-priority one. To resume a suspended task the same <code>signal(id)</code> is used as for tasks that pended themselves.</p>
 </div>
 <div class="ulist data-line-519">
 <ul>
