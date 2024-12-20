@@ -7,7 +7,7 @@
  * 	Module           :  High-Level Scheduler / Kernel Initialisation
  * 	Provides to      :  All services
  *  Depends  on      :  Low-Level Scheduler / Kernel Initialisation
- *  Public API 		 :  No
+ *  Public API 		 :  Yes
  *
  * 	In this unit:
  * 					o Scheduler routines
