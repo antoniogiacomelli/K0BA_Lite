@@ -175,8 +175,7 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
  *
  * \param kobj          Mailbox address.
  * \param initFull		Initialise full.
- * \param initMail		If initialising full, address of the message to
- * 						be copyied.
+ * \param initMail		If initialising full, address of initial mail.
  * \return              K_SUCCESS or specific error.
  */
 K_ERR kMboxInit(K_MBOX *const kobj, BOOL initFull,
@@ -201,7 +200,7 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout);
  * \brief               Receive from a mailbox. Block if empty.
  *
  * \param kobj          Mailbox address.
- * \param recvPtr       Message destination address.
+ * \param recvPPtr      Address that will store the message address (pointer-to-pointer).
  * \param senderIDPtr	Address to store the sender ID.
  * \param timeout		Suspension time-out
  * \return				K_SUCCESS or specific error.
@@ -215,10 +214,6 @@ K_ERR kMboxRecv(K_MBOX *const kobj, ADDR* recvPPtr, TID* senderIDPtr,
  */
 K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
 
-/**
- * \brief 				Return the size set for a message within a mailbox.
- */
-SIZE kMboxGetSize(K_MBOX *const kobj);
 
 #endif
 
@@ -242,18 +237,46 @@ K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR buffer, SIZE messageSize,
  *\brief 			Sends a message to the queue front.
  *\param kobj		Queue address
  *\param sendPtr	Source address
+ *\param timeout	Suspension time
  *\return			K_SUCCESS or specific error
  */
 K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
 
 /*
  *\brief 			Receive a message from the queue
- *\brief
+ *\param kobj		Queue address
+ *\param recvPtr	Receiving address
+ *\param Timeout	Suspension time
  */
 K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK timeout);
+
+/*
+ *\brief 			Send a message to a queue
+ *\param kobj		Queue address
+ *\param recvPtr	Message address
+ *\param Timeout	Suspension time
+ */
 K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
 
 
+/*TODO: document*/
+/*
+*\brief 			Receive the front message of a queue
+*					without changing its state
+*
+*/
+K_ERR kMesgQPeek(K_MESGQ *const kobj, ADDR recvPtr);
+
+
+/*
+*\brief				Asynchronous send to a queue
+*/
+K_ERR kMesgASend(K_MESGQ *const kobj, ADDR const sendPtr);
+
+/*
+*\brief			Asynchronous receive from a queue
+*/
+K_ERR kMesgARecv(K_MESGQ *const kobj, ADDR recvPtr);
 
 
 #endif /*K_DEF_MESGQ*/
