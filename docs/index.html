@@ -489,6 +489,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#simple_usage_patterns">18. Simple Usage Patterns</a>
 <ul class="sectlevel2">
 <li><a href="#event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</a></li>
+<li><a href="#mailbox_client_server">18.2. Mailbox client-server</a></li>
 </ul>
 </li>
 </ul>
@@ -1970,6 +1971,99 @@ VOID Task3(VOID)
 <div class="imageblock data-line-990">
 <div class="content">
 <img src="images/mboxflags.png" alt="mboxflags">
+</div>
+</div>
+</div>
+<div class="sect2 data-line-992">
+<h3 id="mailbox_client_server">18.2. Mailbox client-server</h3>
+<div class="listingblock data-line-994">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">#include "application.h"
+
+K_MBOX mboxClient;
+K_MBOX mboxServer;
+
+/*** Init kernel objects here */
+VOID kApplicationInit(VOID)
+{
+	kMboxInit(&amp;mboxClient, EMPTY, NULL);
+	kMboxInit(&amp;mboxServer, EMPTY, NULL);
+}
+BYTE Checksum8(const BYTE *data, SIZE len) /* Calculate the checksum 8 */
+{
+	BYTE checksum = 0;
+	for (SIZE i = 0; i &lt; len; i++)
+	{
+		checksum += data[i];
+	}
+	return (checksum);
+}
+VOID Task1(VOID)
+{
+	BYTE msg[4] =
+	{ 0x0A, 0x0B, 0x0C, 0x0D }; /*message to send*/
+	BYTE checksum = Checksum8(msg, 4); /*calculate check sum*/
+	ADDR *rcvdMsg = NULL;
+	TID senderPid = 0;
+	BYTE rcvdChksum = 0;
+	while (1)
+	{
+		kMboxSend(&amp;mboxServer, (ADDR) msg, K_WAIT_FOREVER);
+		K_ERR err = kMboxRecv(&amp;mboxClient, (ADDR*)&amp;rcvdMsg, &amp;senderPid, K_WAIT_FOREVER);
+		if (err == 0)
+		{
+			if (senderPid == 2)
+			{
+				rcvdChksum = *(((BYTE*)(rcvdMsg)));
+				if (rcvdChksum == checksum)
+				{
+					kprintf("Checksum ok!\n\r");
+				}
+				else
+				{
+					kprintf("Transmission failed!\n\r");
+
+				}
+			}
+		}
+	}
+}
+VOID Task2(VOID)
+{
+	ADDR rcvdMsg = NULL;
+	BYTE *punnedMsg = NULL;
+	TID senderPid = 0;
+	BYTE checksum = 0;
+	while (1)
+	{
+		K_ERR err = kMboxRecv(&amp;mboxServer, &amp;rcvdMsg, &amp;senderPid, K_WAIT_FOREVER);
+		if (err == 0)
+		{
+			if (senderPid == 1)
+			{
+				punnedMsg = (BYTE*) (rcvdMsg);
+				checksum = Checksum8(punnedMsg, 4);
+				kMboxSend(&amp;mboxClient, (ADDR) &amp;checksum, K_WAIT_FOREVER);
+			}
+
+		}
+	}
+}
+
+VOID Task3(VOID)
+{
+	while (1)
+	{
+		kSleep(1);
+
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="imageblock data-line-1079">
+<div class="content">
+<img src="images/mboxchksm.png" alt="mboxchksm">
 </div>
 </div>
 </div>

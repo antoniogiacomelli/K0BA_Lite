@@ -36,13 +36,13 @@ VOID kApplicationInit(VOID)
 {
 	kMboxInit(&mbox, EMPTY, NULL);
 }
+		UINT32 sendFlag = 0;
+		UPDATE_t updateType = 0;
 
 VOID Task1(VOID)
 {
 	while (1)
 	{
-		UINT32 sendFlag = 0;
-		UPDATE_t updateType = 0;
 
 		while (1)
 		{
@@ -74,15 +74,15 @@ VOID Task1(VOID)
 
 	}
 }
-
-VOID Task2(VOID)
-{
 	UINT32 *rcvdFlag = 0;
 	TID senderPid = 0;
 	UINT32 wantedFlags = FLAG_TEMP_SENSOR_UPDATE | FLAG_HUM_SENSOR_UPDATE |
 	FLAG_CO2_SENSOR_UPDATE |
 	FLAG_FLOW_SENSOR_UPDATE;
 	UINT32 rcvdFlags = 0;
+VOID Task2(VOID)
+{
+
 	while (1)
 	{
 		 K_ERR err = kMboxRecv(&mbox, (ADDR) &rcvdFlag, &senderPid,
