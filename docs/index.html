@@ -1178,7 +1178,7 @@ A specialised use-case of one-shot timers is the <code>kSleep(ticks)</code> prim
 <p>To avoid fragmentation we use fixed-size memory blocks. A simple approach would be a static table marking each block  either as <code>free</code> or <code>taken</code>. With this pattern you will need to 'search' for the next available block, if any - the time for searching changes - what is indeterministic.</p>
 </div>
 <div class="paragraph data-line-496">
-<p>A suitable approach is to keep track of what is free using a linked list of addresses - a dynamic table. We use meta-data a list within the pool first: it is initialised so that every block holds the address of its next block. This approach limits that the minimal size of a block is the size of a memory address - 32-bit for our supported architecture.</p>
+<p>A suitable approach is to keep track of what is free using a linked list of addresses - a dynamic table. We use "meta-data" to initialise the linked-list - every address holds the "next" address value. This approach limits that the minimal size of a block is the size of a memory address - 32-bit for our supported architecture.</p>
 </div>
 <div class="paragraph data-line-498">
 <p>When a routine calls <code>alloc()</code> the address to be returned is the one free list is pointing to, say <code>addr1</code>. Before, we update free list to point to the value stored within <code>addr1</code>, say <code>addr8</code>.</p>
