@@ -1579,13 +1579,13 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 <h2 id="pump_drop_message_queue">15. "Pump-Drop" Message Queue</h2>
 <div class="sectionbody">
 <div class="paragraph data-line-689">
-<p>Pump-Drop Queues are meant to overcome the drawbacks exposed above for message queues, based on the concept of Cyclical Asynchronous Buffers (CAB) (essentialy as found in the HARTIK kernel). These queues are a one-to-many mechanism. A buffer can be read by several consumers, but no buffer can be written while consumed. The ideal queue size is the number of readers + 1.</p>
+<p>Pump-Drop Queues are meant to overcome the drawbacks exposed above for message queues, based on the concept of Cyclical Asynchronous Buffers (CAB) (essentialy as found in the HARTIK kernel). These queues are a one-to-many mechanism. A buffer can be read by several consumers, but no buffer can be written while consumed. The ideal queue size is simply the number of readers + 1.</p>
 </div>
 <div class="paragraph data-line-691">
-<p>The semantics is as follows:</p>
+<p>The semantics is as follows - remember it is one writer to many readers:</p>
 </div>
-<div class="ulist data-line-693">
-<ul>
+<div class="olist arabic data-line-693">
+<ol class="arabic">
 <li class="data-line-693">
 <p>When the producer needs to write a new message to the queue, first it <em>reserves</em> a buffer. With a valid address.</p>
 </li>
@@ -1596,51 +1596,54 @@ and <code>arecvkeep()</code> - to retrieve a message from a mailbox but the box 
 <p>The last message pumped in a queue is not overwritten until its number of readers is to 0.</p>
 </li>
 <li class="data-line-696">
-<p>When a writer <em>pumps</em> the kernel will verify if a buf</p>
+<p>When the writer <em>pumps</em>, the kernel will verify if a former pumped buffer has now 0 readers. If so, it is deallocated.</p>
 </li>
 <li class="data-line-697">
-<p>A reader first 'fetches' a message buffer address - what will increase the user count within a buffer.</p>
+<p>The <em>pumped</em> buffer is marked as the <em>most recent buffer</em>. In case another pump happens before any readings, a <em>most recent buffer</em> is not mistaken for a buffer that has been consumed.</p>
 </li>
 <li class="data-line-698">
-<p>After consuming the message, the reader 'drop the buffer'.</p>
+<p>A reader first 'fetches' a message buffer address - what will increase the user count within a buffer.</p>
 </li>
-</ul>
+<li class="data-line-699">
+<p>After consuming the message, a reader 'drop the buffer'.</p>
+</li>
+</ol>
 </div>
-<div class="paragraph data-line-700">
+<div class="paragraph data-line-701">
 <p>Note that here, the message scope is left for the application to control but <em>in both consumer and producer sides</em>, so the mechanism is well-defined.</p>
 </div>
-<div class="paragraph data-line-702">
+<div class="paragraph data-line-703">
 <p>By the exposure, you can conclude that a reader might miss messages when the writer&#8217;s rate is higher. A reader within a (servo-loop) controller can afford a 'miss' rate— what leads to failure is reading messages that do not represent the plant state.</p>
 </div>
-<div class="ulist data-line-704">
+<div class="ulist data-line-705">
 <ul>
-<li class="data-line-704">
+<li class="data-line-705">
 <p>Pump-drop queues can enabled/disabled in <code>kconfig.h</code>.</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
-<div class="sect1 data-line-706">
+<div class="sect1 data-line-707">
 <h2 id="remarks_on_message_passing">16. Remarks on Message Passing</h2>
 <div class="sectionbody">
-<div class="ulist data-line-708">
+<div class="ulist data-line-709">
 <ul>
-<li class="data-line-708">
+<li class="data-line-709">
 <p>Mailboxes are designed for message-as-an-event is the primary intent. Their single-message capacity and simple semantics make them optimal for 1-1 command-response patterns that <strong>need</strong> to run in lockstep.</p>
 </li>
-<li class="data-line-710">
+<li class="data-line-711">
 <p>Queues involve buffer management, making them better suited for data-centric use cases like telemetry, logging, or serialisation. They can accommodate many-to-many patterns.
 The intermediate asynchronous behaviour and the deep copy gives some freedom to sender-receiver - but if overused they cause bugs that are difficult finding. Avoid many-to-many communications.</p>
 </li>
-<li class="data-line-713">
+<li class="data-line-714">
 <p>Pump-drop queues are suitable for one-to-many patterns, when the consumer is concerned on with the most recent data, not the historical of messages - like control-loops.</p>
 </li>
 </ul>
 </div>
-<div class="exampleblock data-line-715">
+<div class="exampleblock data-line-716">
 <div class="content">
-<div class="paragraph data-line-716">
+<div class="paragraph data-line-717">
 <p>In UNIX a <em>broken pipe</em> is a pipe with writers but no
 readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinforces the idea that there is not such a thing as valid never-received data.</p>
 </div>
@@ -1648,10 +1651,10 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 </div>
 </div>
 </div>
-<div class="sect1 data-line-721">
+<div class="sect1 data-line-722">
 <h2 id="pipes">17. Pipes</h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch data-line-725">
+<table class="tableblock frame-all grid-all stretch data-line-726">
 <colgroup>
 <col style="width: 100%;">
 </colgroup>
@@ -1681,7 +1684,7 @@ readers. A pipe with readers but no writers is <em>not 'broken'</em>. It reinfor
 </tr>
 </tbody>
 </table>
-<div class="paragraph data-line-735">
+<div class="paragraph data-line-736">
 <p>Pipes transmit streams of bytes - unlike queues or mailboxes
 that transmit 'objects' with a format. They are fast because data does
 not move, what moves is the read/write pointer within the pipe buffer.
@@ -1689,24 +1692,24 @@ A writer stops its operation when the N specified bytes have been
 written, or there is no more room. In the last case it goes to sleep until
 a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
-<div class="paragraph data-line-742">
+<div class="paragraph data-line-743">
 <p>A reader reads until N specified bytes were read or when there is no more data. In the last case it will sleep, to be waken by a writer.</p>
 </div>
-<div class="paragraph data-line-744">
+<div class="paragraph data-line-745">
 <p>Both one-to-many and many-to-one channels are possible - those who wake need to themselves ensure precedence.</p>
 </div>
-<div class="paragraph data-line-746">
+<div class="paragraph data-line-747">
 <p>A handy use of these pipe is combining two for <em>double buffering</em>.</p>
 </div>
-<div class="paragraph data-line-748">
+<div class="paragraph data-line-749">
 <p>As on V0.3.0, they depend on <em>sleep-wake</em> mechanism.</p>
 </div>
-<div class="paragraph data-line-750">
+<div class="paragraph data-line-751">
 <p>You cannot usem them within ISRs, in no occasion.</p>
 </div>
-<div class="ulist data-line-753">
+<div class="ulist data-line-754">
 <ul>
-<li class="data-line-753">
+<li class="data-line-754">
 <p>Pipes can be enabled/disabled in <code>kconfig.h</code></p>
 </li>
 </ul>
