@@ -486,11 +486,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#pump_drop_message_queue">15. "Pump-Drop" Message Queue</a></li>
 <li><a href="#remarks_on_message_passing">16. Remarks on Message Passing</a></li>
 <li><a href="#pipes">17. Pipes</a></li>
+<li><a href="#simple_usage_patterns">18. Simple Usage Patterns</a>
+<ul class="sectlevel2">
+<li><a href="#event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</a></li>
 </ul>
 </li>
-<li><a href="#simple_usage_patterns">Simple Usage Patterns</a>
-<ul class="sectlevel1">
-<li><a href="#event_flags_with_a_mailbox">18. Event Flags with a mailbox</a></li>
 </ul>
 </li>
 </ul>
@@ -1739,10 +1739,11 @@ a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
 </div>
 </div>
-<h1 id="simple_usage_patterns" class="sect0 data-line-765">Simple Usage Patterns</h1>
-<div class="sect1 data-line-767">
-<h2 id="event_flags_with_a_mailbox">18. Event Flags with a mailbox</h2>
+<div class="sect1 data-line-765">
+<h2 id="simple_usage_patterns">18. Simple Usage Patterns</h2>
 <div class="sectionbody">
+<div class="sect2 data-line-767">
+<h3 id="event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</h3>
 <div class="paragraph data-line-769">
 <p><strong>Board: STM Nucleo-F103RB</strong></p>
 </div>
@@ -1765,7 +1766,7 @@ int main(void)
 	NVIC_SetPriorityGrouping(0);
 	NVIC_SetPriority(SVCall_IRQn, 0x07);
 	NVIC_SetPriority(SysTick_IRQn, 0x08);
-	NVIC_SetPriority(PendSV_IRQn, 0x08);
+	NVIC_SetPriority(PendSV_IRQn, 0x0A);
 	assert(
 			kCreateTask(Task1 , "Task1" , 1, stack1 , STACKSIZE, 1,
 			FALSE)==K_SUCCESS)
@@ -1969,6 +1970,7 @@ VOID Task3(VOID)
 <div class="imageblock data-line-990">
 <div class="content">
 <img src="images/mboxflags.png" alt="mboxflags">
+</div>
 </div>
 </div>
 </div>
