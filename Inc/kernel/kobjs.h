@@ -189,18 +189,12 @@ struct kMemBlock
 /* Indirect Blocking or Fully Synchronous Mailbox */
 struct kMailbox
 {
-
     BOOL init;
     K_MBOX_STATUS mboxState;
-#if (K_DEF_SYNCH_MBOX==ON)
-
     K_TCB* owner;
     struct kList waitingQueue;
-
-#endif
     K_TCB* channel;
     TID    senderTID;
-    SIZE   mailSize;
     ADDR   mailPtr;
     BOOL timedOut;
 	K_TIMEOUT_NODE timeoutNode;

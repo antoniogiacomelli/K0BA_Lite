@@ -30,11 +30,7 @@
  ******************************************************************************/
 #if (K_DEF_MBOX==ON)
 
-K_ERR kMboxInit(K_MBOX *const kobj,
-#if  (K_DEF_MBOX_INIT_FLAGS == ON)
-		BOOL initFull, ADDR initMailPtr
-#endif
-		)
+K_ERR kMboxInit(K_MBOX *const kobj,	BOOL initFull, ADDR initMailPtr)
 {
 	K_CR_AREA
 
@@ -61,7 +57,6 @@ K_ERR kMboxInit(K_MBOX *const kobj,
 		kobj->mboxState = MBOX_EMPTY;
 		kobj->channel = NULL;
 	}
-#if (K_DEF_SYNCH_MBOX==ON)
 
 	K_ERR listerr;
 	listerr = kListInit(&kobj->waitingQueue, "mailq");
@@ -70,9 +65,6 @@ K_ERR kMboxInit(K_MBOX *const kobj,
 	kobj->timeoutNode.timeout = 0;
 	kobj->timeoutNode.kobj = kobj;
 	kobj->timeoutNode.objectType = MAILBOX;
-
-#endif
-
 	kobj->init = TRUE;
 	K_EXIT_CR
 	return (K_SUCCESS);
@@ -112,7 +104,6 @@ K_ERR kMboxName(K_MBOX *const kobj, TID id)
 
 }
 
-#if (K_DEF_SYNCH_MBOX==ON)
 
 K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 {
@@ -286,8 +277,6 @@ K_ERR kMboxRecv(K_MBOX *const kobj, ADDR* recvPPtr, TID *senderIDPtr,
 	return (K_SUCCESS);
 }
 
-#endif /*synchmbox*/
-
 #if (K_DEF_AMBOX==ON)
 K_ERR kMboxAsend(K_MBOX *const kobj, ADDR const sendPtr)
 {
@@ -442,13 +431,6 @@ K_MBOX_STATUS kMboxQuery(K_MBOX *const kobj)
 /*******************************************************************************
  * INDIRECT BLOCKING MESSAGE QUEUE
  *******************************************************************************/
-/*
- * The message queue is an extended mailbox. A queue implies on two entry points
- * an intermediate state between full and empty and on message/space counter.
- * Yet a single waiting queue is enough since after blocking full only writers
- * are released by readers, and vice-versa
- */
-
 #if(K_DEF_MESGQ==ON)
 
 K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR const buffer, SIZE const mesgSize,
