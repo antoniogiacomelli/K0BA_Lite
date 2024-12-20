@@ -81,6 +81,10 @@ K_ERR kSuspend(TID const taskID)
 	K_ENTER_CR
 	K_ERR err = -1;
 	PID pid = kGetTaskPID(taskID);
+	if (runPtr->priority > tcbs[pid].priority)
+		return (K_ERR_CANT_SUSPEND);
+	if (tcbs[pid].status != READY)
+		return (K_ERR_CANT_SUSPEND);
 	err = kUnRun_(&sleepingQueue, &tcbs[pid], SUSPENDED);
 	assert(err == 0);
 	K_EXIT_CR
@@ -109,14 +113,14 @@ VOID kEventSleep(K_EVENT *kobj, TICK timeout)
 	{
 		K_ERR err = kEventInit(kobj);
 		if (err < 0)
-		assert(0);
+			assert(0);
 	}
 
 	if (kobj->init == TRUE)
 	{
 		kTimeOut(&kobj->timeoutNode, timeout);
-		K_ERR err = kUnRun_( &kobj->waitingQueue, runPtr, SLEEPING);
-		assert( !err);
+		K_ERR err = kUnRun_(&kobj->waitingQueue, runPtr, SLEEPING);
+		assert(!err);
 		runPtr->pendingEv = kobj;
 		K_PEND_CTXTSWTCH
 		K_EXIT_CR
@@ -139,7 +143,7 @@ VOID kEventWake(K_EVENT *kobj)
 	if (kobj->init == FALSE)
 	{
 		K_ERR err = kEventInit(kobj);
-		assert( !err);
+		assert(!err);
 	}
 	SIZE sleepThreads = kobj->waitingQueue.size;
 	if (sleepThreads > 0)
@@ -397,7 +401,7 @@ K_ERR kMutexLock(K_MUTEX *const kobj, TICK timeout)
 	}
 	else
 	{
-		if (kobj->ownerPtr==runPtr)
+		if (kobj->ownerPtr == runPtr)
 		{ /* recursive lock ? why ? WHYYYYYYYYYYY*/
 			K_EXIT_CR
 			return (K_ERR_MUTEX_REC_LOCK);

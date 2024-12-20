@@ -550,7 +550,7 @@ It targets real-time constrained devices. The "zero" represents a <em>low-overhe
 </div>
 </div>
 <div class="paragraph data-line-32">
-<p><em>Figure 1. K0BA architecture - the dashed line within the API reminds the 'application' layer is an illusion</em></p>
+<p><em>K0BA architecture - the dashed line within the API reminds the 'application' layer is an illusion</em></p>
 </div>
 <div class="paragraph data-line-34">
 <p>A layered depiction:</p>
@@ -561,7 +561,7 @@ It targets real-time constrained devices. The "zero" represents a <em>low-overhe
 </colgroup>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>APPLICATION INTERFACE</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>APPLICATION PROGRAMMING INTERFACE</em></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MESSAGE PASSING</p></td>
@@ -577,9 +577,6 @@ It targets real-time constrained devices. The "zero" represents a <em>low-overhe
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LOW-LEVEL SCHEDULER</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><em>CPU HAL</em></strong></p></td>
 </tr>
 </tbody>
 </table>
@@ -628,7 +625,7 @@ It targets real-time constrained devices. The "zero" represents a <em>low-overhe
 <p>With no memory virtualisation, and no affordable swapping, what is left is a single program image and a single resident process. We tweak it to create semi-independent (clueless) running units - threads - there is no isolation between a thread and another.</p>
 </div>
 <div class="paragraph data-line-79">
-<p>Even low-end MCUs might provide an MPU (K0BA has a version using it - the  <em>Minim&#8217;All</em> version) - still - it is not virtualisation, as you see on <em>multiprogramming</em>  kernels. They are memory firewalls - except that this firewall burns the house down when violated.</p>
+<p>Even low-end MCUs might provide an MPU it is not virtualisation, as you see on <em>multiprogramming</em>  kernels. They are memory firewalls that burn the house down when violated.</p>
 </div>
 <div class="paragraph data-line-81">
 <p>Real-time means system software needs to tick at the same pace of the changes in the environment we control.

@@ -97,18 +97,17 @@ typedef enum kErr
     K_ERR_LIST_ITEM_NOT_FOUND   = (int)0xFFFF0002, /* Item not found on a K_LIST */
     K_ERR_LIST_EMPTY 		    = (int)0xFFFF0003, /* Empty list */
 
-	K_ERR_MEM_INIT 			    = (int)0xFFFF0004, /* Error initialisi0008g memory control block */
-    K_ERR_MEM_FREE 			    = (int)0xFFFF0005, /* Error when freeing an allocated memory */
-    K_ERR_MEM_ALLOC 		    = (int)0xFFFF0006, /* Error allocating memory */
-
+	K_ERR_MEM_INIT 			    = (int)0xFFFF0004,  
+    K_ERR_MEM_FREE 			    = (int)0xFFFF0005,  
+    K_ERR_MEM_ALLOC 		    = (int)0xFFFF0006,  
 	K_ERR_TIMER_POOL_EMPTY		= (int)0xFFFF0007,
 
 
     K_ERR_INVALID_TID 		    = (int)0xFFFF0008, /* Invalid user-assigned task IDs are 0 or 255*/
 	K_ERR_INVALID_PRIO 			= (int)0xFFFF0009, /* Valid task priority range: 0-31. */
 
-	K_ERR_INVALID_QUEUE_SIZE    = (int)0xFFFF000A, /* Maximum message queue size is 255 items */
-    K_ERR_INVALID_MESG_SIZE     = (int)0xFFFF000B, /* Maximum message for a message queue is 255 bytes */
+	K_ERR_INVALID_QUEUE_SIZE    = (int)0xFFFF000A, 
+    K_ERR_INVALID_MESG_SIZE     = (int)0xFFFF000B, 
 
 	K_ERR_MEM_CPY 				= (int)0xFFFF000C, /* Error when copying a chunk of bytes from one addr to other */
 
@@ -121,7 +120,7 @@ typedef enum kErr
     K_ERR_INVALID_TSLICE 		= (int)0xFFFF0011,
 	K_ERR_MESGQ_NO_BUFFER 		= (int)0xFFFF0012, /* Trying to send/recv copy from a queue with
 													  unknown buffering address */
-	K_ERR_NAMED_MBOX_SEND_SELF  = (int)0xFFFF0013, /* named channel cant sent do itself */
+	K_ERR_NAMED_MBOX_SEND_SELF  = (int)0xFFFF0013, /* named channel cant send to itself */
 	K_ERR_NAMED_MBOX_RECV		= (int)0xFFFF0014, /* a named mbox can only accept recv its assigned task */
 	K_ERR_MBOX_INIT_MAIL		= (int)0xFFFF0015,
 	K_ERR_MUTEX_REC_LOCK		= (int)0xFFFF0016
@@ -216,11 +215,6 @@ typedef K_LIST K_TCBQ;
 
 #endif /* mbox */
 
-#if (K_DEF_AMBOX == ON)
-
-    typedef struct kAsynchMbox K_AMBOX;
-
-#endif /* ambox */
 
 #if (K_DEF_SLEEPWAKE==ON)
 
@@ -247,10 +241,5 @@ typedef K_LIST K_TCBQ;
 
 #endif
 
-typedef enum
-{
-	K_OR,
-	K_AND,
-	K_XOR
-}K_BITWISE;
+
 #endif/*ktypes*/
