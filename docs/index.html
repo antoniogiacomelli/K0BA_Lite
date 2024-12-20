@@ -486,7 +486,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#pump_drop_message_queue">15. "Pump-Drop" Message Queue</a></li>
 <li><a href="#remarks_on_message_passing">16. Remarks on Message Passing</a></li>
 <li><a href="#pipes">17. Pipes</a></li>
-<li><a href="#simple_usage_patterns">18. Simple Usage Patterns</a>
+<li><a href="#usage_patterns">18. Usage Patterns</a>
 <ul class="sectlevel2">
 <li><a href="#event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</a></li>
 <li><a href="#mailbox_client_server">18.2. Mailbox client-server</a></li>
@@ -1717,7 +1717,7 @@ a reader wakes it up after 'extracting' from the pipe.</p>
 <p>Both one-to-many and many-to-one channels are possible - those who wake need to themselves ensure precedence.</p>
 </div>
 <div class="paragraph data-line-754">
-<p>A handy use of these pipe is combining two for <em>double buffering</em>.</p>
+<p>A handy use is combining two for <em>double buffering</em>.</p>
 </div>
 <div class="paragraph data-line-756">
 <p>As on V0.3.0, they depend on <em>sleep-wake</em> mechanism.</p>
@@ -1735,14 +1735,14 @@ a reader wakes it up after 'extracting' from the pipe.</p>
 </div>
 </div>
 <div class="sect1 data-line-763">
-<h2 id="simple_usage_patterns">18. Simple Usage Patterns</h2>
+<h2 id="usage_patterns">18. Usage Patterns</h2>
 <div class="sectionbody">
-<div class="sect2 data-line-765">
-<h3 id="event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</h3>
-<div class="paragraph data-line-767">
-<p><strong>Board: STM Nucleo-F103RB</strong></p>
+<div class="paragraph data-line-765">
+<p>In this section some simple usage patterns are being attached. The board used is STM Nucleo-F103RB, ARM Cortex-M3.</p>
 </div>
-<div class="listingblock data-line-769">
+<div class="sect2 data-line-768">
+<h3 id="event_flags_with_a_mailbox">18.1. Event Flags with a mailbox</h3>
+<div class="listingblock data-line-770">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-none hljs">/*@FILE main.c */
 #include "kenv.h"
@@ -1962,15 +1962,15 @@ VOID Task3(VOID)
 }</code></pre>
 </div>
 </div>
-<div class="imageblock data-line-988">
+<div class="imageblock data-line-989">
 <div class="content">
 <img src="images/mboxflags.png" alt="mboxflags">
 </div>
 </div>
 </div>
-<div class="sect2 data-line-990">
+<div class="sect2 data-line-991">
 <h3 id="mailbox_client_server">18.2. Mailbox client-server</h3>
-<div class="listingblock data-line-992">
+<div class="listingblock data-line-993">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-none hljs">#include "application.h"
 
@@ -2055,7 +2055,7 @@ VOID Task3(VOID)
 }</code></pre>
 </div>
 </div>
-<div class="imageblock data-line-1077">
+<div class="imageblock data-line-1078">
 <div class="content">
 <img src="images/mboxchksm.png" alt="mboxchksm">
 </div>
