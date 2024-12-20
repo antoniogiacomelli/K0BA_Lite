@@ -349,7 +349,7 @@ VOID kHandleTimeoutList(void)
 {
 	K_TIMEOUT_NODE **currentPtr = &timeOutListHeadPtr;
 
-	while (*currentPtr != NULL)
+	while (*currentPtr != NULL && timeOutListHeadPtr->timeout != 0)
 	{
 		K_TIMEOUT_NODE *node = *currentPtr;
 
