@@ -157,11 +157,6 @@ typedef enum kFault
 	FAULT_INVALID_SVC = 0xFF
 } K_FAULT;
 
-typedef enum
-{
-	MESGQ_EMPTY = 0, MESGQ_PARTIAL = 1, MESGQ_FULL = 2
-} K_MESGQ_STATUS;
-
 /**
  * \brief Task status
  */
