@@ -119,7 +119,7 @@ K_ERR kSemaInit(K_SEMA* const kobj, INT32 const value);
  *\param kobj 		Semaphore address
  *\param timeout	Maximum suspension time
  */
-VOID kSemaWait(K_SEMA* const kobj, TICK const timeout);
+K_ERR kSemaWait(K_SEMA* const kobj, TICK const timeout);
 
 /**
  *\brief Signal a semaphore
@@ -165,7 +165,7 @@ K_ERR kMutexQuery(K_MUTEX* const kobj);
 #endif
 
 /*******************************************************************************
- * SYNCH MAILBOX
+ * MAILBOX
  *******************************************************************************/
 
 #if (K_DEF_MBOX == ON)
@@ -209,11 +209,47 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout);
 K_ERR kMboxRecv(K_MBOX *const kobj, ADDR* recvPPtr, TID* senderIDPtr,
 		TICK timeout);
 
+#if (K_DEF_AMBOX==ON)
+/* asynchronous methods */
+
 /**
- * \brief       		Return status of a mailbox: full, empty.
- *
+ *\brief			Non-blocking send to a mailbox
+ *\param kobj		Mailbox object address
+ *\param sendPtr	Address of the message to send
+ *\return			K_SUCCESS/K_MBOX_FULL or other specific error
  */
-K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
+K_ERR kMboxAsend(K_MBOX *const kobj, ADDR const sendPtr);
+/**
+ *\brief			Send to a mailbox even if it is full
+ *\param kobj		Mailbox object address
+ *\param sendPtr	Address of the message to send
+ *\return			K_SUCCESS/K_MBOX_FULL or other specific error
+ */
+K_ERR kMboxAsendOvw(K_MBOX *const kobj, ADDR const sendPtr);
+
+/**
+ *\brief			Non-block receive from a mailbox
+ *\param kobj		Mailbox object address
+ *\param recvPtr	Address to store the received message
+ *\return			K_SUCCESS or specific error
+ */
+K_ERR kMboxArecv(K_MBOX *const kobj, ADDR recvPtr, TID *senderTIDPtr);
+
+/**
+ *\brief			Reads a message from a mailbox, but does not change
+ *\					its state to empty
+ *\param kobj		Mailbox object address
+ *\param recvPtr	Address to store the received message
+ *\return			K_SUCCESS/K_MBOX_EMPTY or specific error
+ */
+K_ERR kMboxArecvKeep(K_MBOX *const kobj, ADDR recvPtr, TID *senderTIDPtr);
+#endif
+
+/**
+ * \brief   Check if a mailbox is full.
+ * \return  TRUE or FALSE.
+ */
+BOOL kMboxIsFull(K_MBOX *const kobj);
 
 
 #endif
@@ -222,7 +258,7 @@ K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
 /* MESSAGE QUEUE                                                              */
 /******************************************************************************/
 #if (K_DEF_MESGQ == ON)
-/*
+/**
  *\brief 			Initialise a Indirect Blocking Message Queue
  *\param kobj		Queue address
  *\param buffer		Allocated memory. It must be enough for the queue capacity
@@ -234,16 +270,16 @@ K_MBOX_STATUS kMboxQuery(K_MBOX* const kobj);
 K_ERR kMesgQInit(K_MESGQ *const kobj, ADDR buffer, SIZE messageSize,
 		SIZE maxMessages);
 
-/*
+/**
  *\brief 			Sends a message to the queue front.
  *\param kobj		Queue address
- *\param sendPtr	Source address
+ *\param sendPtr	Message address
  *\param timeout	Suspension time
  *\return			K_SUCCESS or specific error
  */
 K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
 
-/*
+/**
  *\brief 			Receive a message from the queue
  *\param kobj		Queue address
  *\param recvPtr	Receiving address
@@ -251,7 +287,7 @@ K_ERR kMesgQJam(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
  */
 K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK timeout);
 
-/*
+/**
  *\brief 			Send a message to a queue
  *\param kobj		Queue address
  *\param recvPtr	Message address
@@ -260,22 +296,29 @@ K_ERR kMesgQRecv(K_MESGQ *const kobj, ADDR recvPtr, TICK timeout);
 K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK timeout);
 
 
-/*TODO: document*/
-/*
+/**
 *\brief 			Receive the front message of a queue
 *					without changing its state
-*
+*\param	kobj		Message Queue object address
+*\param	recvPtr		Receiving pointer address
+*\return			K_SUCCESS or error.
 */
 K_ERR kMesgQPeek(K_MESGQ *const kobj, ADDR recvPtr);
 
 
-/*
+/**
 *\brief				Asynchronous send to a queue
+*\param	kobj		Message Queue object address
+*\param	sendPtr		Message pointer address
+*\return			K_SUCCESS or error
 */
 K_ERR kMesgQAsend(K_MESGQ *const kobj, ADDR const sendPtr);
 
-/*
-*\brief			Asynchronous receive from a queue
+/**
+*\brief				Asynchronous receive from a queue
+*\param	kobj		Message Queue object address
+*\param	recvPtr		Receiving pointer address
+*\return			K_SUCCESS or error
 */
 K_ERR kMesgQArecv(K_MESGQ *const kobj, ADDR recvPtr);
 
@@ -553,13 +596,19 @@ SIZE kMemCpy(ADDR destPtr, ADDR const srcPtr, SIZE size);
 
 /* 				*				*				*				*			  */
 
-/*
- * brief Macro for unused variables
- */
+
+/* Helpers */
 #if !defined(UNUSED)
 #define UNUSED(x) (void)x
 #endif
-#define K_DEF_PRINTF (OFF)
+
+/* Running Task Get */
+extern K_TCB* runPtr;
+#define K_RUNNING_TID (runPtr->uPid)
+#define K_RUNNING_PID (runPtr->pid)
+#define K_RUNNING_PRIO (runPtr->priority)
+
+
 /*[EOF]*/
 
 #endif /* KAPI_H */

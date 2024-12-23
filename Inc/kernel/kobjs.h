@@ -48,10 +48,14 @@ struct kList
 
 struct kTcb
 {
+/* Don't change */
+
 	INT* sp;           /* Saved stack pointer */
 	K_TASK_STATUS status; /* Task status */
 	UINT32 runCnt;        /* Dispatch count */
-    BOOL   yield;		  /* Relinquished			   */
+
+/**/
+	STRING taskName;      /* Task name */
 	INT* stackAddrPtr; /* Stack address */
 	UINT32 stackSize;     /* Stack size */
 	PID pid;              /* System-defined task ID */
@@ -64,11 +68,20 @@ struct kTcb
 	TICK timeLeft;        /* Remaining time-slice 	   */
 #endif
 
-	STRING taskName;      /* Task name */
-    BOOL runToCompl;      /* Cooperative-only task     */
-	TICK busyWaitTime;    /* Busy-Delay in ticks 	   */
-    BOOL   timeOut;		  /* Blocking time-out		   */
-/*--- RESOURCES-----------------------------------------*/
+
+/* Timer */
+
+    TICK busyWaitTime;
+#if (K_DEF_SCH_TSLICE==OFF)
+	TICK   lastWakeTime;
+#endif
+
+/* Flags */
+    BOOL   runToCompl;
+    BOOL   yield;
+    BOOL   timeOut;
+
+/* Resources */
 
 #if (K_DEF_SEMA == ON)
     K_SEMA* pendingSema;
@@ -88,12 +101,11 @@ struct kTcb
 
 	K_TIMER* pendingTmr;
 
-/*--- MONITORING ------------------------------------------*/
+/* Monitoring */
+
 	UINT32 lostSignals;   /* Number of lost direct signals */
 	UINT32 nPreempted;    /* Preemption count  */
 	PID    preemptedBy;   /* PID that preempted */
-	TICK   lastWakeTime;
-/*-----------------------------------------------------------*/
 
 	struct kListNode tcbNode; /* Aggregated list node 	   */
 
@@ -148,18 +160,9 @@ struct kEvent
 	struct kList waitingQueue; /* Waiting queue */
 	BOOL init; /* Init flag */
 	UINT32 eventID; /* event ID */
-	CBK callback;
 	K_TIMEOUT_NODE timeoutNode;
 
 };
-
-struct kEventGroup
-{
-	struct kEvent event;
-	UINT32 currentFlags;
-	UINT32 expectedFlags;
-};
-
 
 #if (K_DEF_PIPE == ON) /* still within kdefsleepwake*/
 
@@ -203,10 +206,8 @@ struct kMemBlock
 struct kMailbox
 {
     BOOL init;
-    K_MBOX_STATUS mboxState;
     K_TCB* owner;
-    struct kList rWaitingQueue;
-    struct kList wWaitingQueue;
+    struct kList waitingQueue;
     TID    senderTID;
     ADDR   mailPtr;
     BOOL timedOut;
@@ -221,10 +222,7 @@ struct kMailbox
 struct kMesgQ
 {
     BOOL init;
-    K_MESGQ_STATUS state;
 
-    K_TCB* owner;
-    struct kList waitingQueue;
 
     SIZE mesgSize;
     SIZE maxMesg;
@@ -233,7 +231,13 @@ struct kMesgQ
     BYTE* buffer;
     SIZE readIndex;
     SIZE writeIndex;
+
+#if (K_DEF_SYNCH_MESGQ==ON)
+    K_TCB* owner;
+    struct kList waitingQueue;
 	K_TIMEOUT_NODE timeoutNode;
+#endif
+
 } __attribute__((aligned(4)));
 
 #endif /*K_DEF_MSG_QUEUE*/

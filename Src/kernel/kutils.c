@@ -58,6 +58,7 @@ extern UART_HandleTypeDef huart2;
 K_MUTEX printMutex;
 int _write(int file, char* ptr, int len)
 {
+
 	int ret = len;
 	while (len)
 	{

@@ -238,7 +238,6 @@ TICK kTickGet(void)
 	return (runTime.globalTick);
 }
 
-
 VOID kSleepUntil(TICK const period)
 {
 	K_CR_AREA
@@ -293,36 +292,30 @@ VOID kTimeOut(K_TIMEOUT_NODE *timeOutNode, TICK timeout)
 	timeOutNode->timeout = timeout;
 
 	/* Add the timeout node to the head of the timeout list */
-	timeOutNode->nextPtr = timeOutListHeadPtr;
-	timeOutListHeadPtr = timeOutNode;
-}
+	if (timeOutNode != timeOutListHeadPtr)
+	{
+		timeOutNode->nextPtr = timeOutListHeadPtr;
+		timeOutListHeadPtr = timeOutNode;
 
+	}
+}
 /* Handler traverses the list and process each object accordinly */
 
 VOID kRemoveTaskFromMbox(ADDR kobj)
 {
 	K_MBOX *mboxPtr = (K_MBOX*) kobj;
 
-	if (mboxPtr->wWaitingQueue.size > 0)
+	if (mboxPtr->waitingQueue.size > 0)
 	{
 		K_TCB *taskPtr;
-		kTCBQDeq(&mboxPtr->wWaitingQueue, &taskPtr);
-
-		taskPtr->status = READY;
+		kTCBQDeq(&mboxPtr->waitingQueue, &taskPtr);
 		taskPtr->timeOut = TRUE;
-
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+		if (!kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr))
+		{
+			taskPtr->status = READY;
+		}
 	}
-	else if (mboxPtr->rWaitingQueue.size > 0)
-	{
-		K_TCB *taskPtr;
-		kTCBQDeq(&mboxPtr->rWaitingQueue, &taskPtr);
 
-		taskPtr->status = READY;
-		taskPtr->timeOut = TRUE;
-
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
-	}
 }
 
 void kRemoveTaskFromSema(void *kobj)
@@ -333,11 +326,11 @@ void kRemoveTaskFromSema(void *kobj)
 	{
 		K_TCB *taskPtr;
 		kTCBQDeq(&semaPtr->waitingQueue, &taskPtr);
-
-		taskPtr->status = READY;
 		taskPtr->timeOut = TRUE;
-
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
+		if (!kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr))
+		{
+			taskPtr->status = READY;
+		}
 	}
 }
 
@@ -349,12 +342,11 @@ VOID kRemoveTaskFromMutex(ADDR kobj)
 	{
 		K_TCB *taskPtr;
 		kTCBQDeq(&mutexPtr->waitingQueue, &taskPtr);
-
-		taskPtr->status = READY;
 		taskPtr->timeOut = TRUE;
-
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
-		taskPtr->status = READY;
+		if (!kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr))
+		{
+			taskPtr->status = READY;
+		}
 
 	}
 }
@@ -368,11 +360,12 @@ VOID kRemoveTaskFromQueue(ADDR kobj)
 		K_TCB *taskPtr;
 		kTCBQDeq(&queuePtr->waitingQueue, &taskPtr);
 
-		taskPtr->status = READY;
 		taskPtr->timeOut = TRUE;
 
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
-		taskPtr->status = READY;
+		if (!kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr))
+		{
+			taskPtr->status = READY;
+		}
 	}
 }
 
@@ -384,12 +377,11 @@ VOID kRemoveTaskFromEvent(ADDR kobj)
 	{
 		K_TCB *taskPtr;
 		kTCBQDeq(&eventPtr->waitingQueue, &taskPtr);
-
-		taskPtr->status = READY;
 		taskPtr->timeOut = TRUE;
-
-		kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr);
-		taskPtr->status = READY;
+		if (!kTCBQEnq(&readyQueue[taskPtr->priority], taskPtr))
+		{
+			taskPtr->status = READY;
+		}
 	}
 }
 

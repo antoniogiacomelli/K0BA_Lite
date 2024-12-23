@@ -432,6 +432,24 @@ PRIO kGetTaskPrio(TID const taskID)
 	return (tcbs[pid].priority);
 }
 
+/* get user-assigned running task id */
+TID kGetRunningTID(VOID)
+{
+	return (runPtr->uPid);
+}
+
+/* get kernel-assigned running task id */
+TID kGetRunningPID(VOID)
+{
+	return (runPtr->pid);
+}
+
+PRIO kGetRunningPRIO(VOID)
+{
+	return (runPtr->priority);
+}
+
+
 /******************************************************************************
  * KERNEL INITIALISATION
  *******************************************************************************/

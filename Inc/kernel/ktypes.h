@@ -163,12 +163,6 @@ typedef enum kFault
 
 typedef enum
 {
-    MBOX_EMPTY =    0,
-    MBOX_FULL  =    1
-}K_MBOX_STATUS;
-
-typedef enum
-{
     MESGQ_EMPTY 	=    0,
 	MESGQ_PARTIAL   =    1,
     MESGQ_FULL		=    2

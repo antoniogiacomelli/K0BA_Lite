@@ -41,7 +41,6 @@
 .equ SP_OFFSET, 0
 .equ STATUS_OFFSET, 4
 .equ RUNCNTR_OFFSET, 8
-.equ YIELD_OFFSET, 12
 
 .global __getReadyPrio
 .type __getReadyPrio, %function

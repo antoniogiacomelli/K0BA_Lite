@@ -45,7 +45,7 @@
 
 /**/
 /*** [The lowest effective priority, that is the highest user-defined value]  */
-#define K_DEF_MIN_PRIO	           	 (1)
+#define K_DEF_MIN_PRIO	           	 (2)
 
 /**/
 /*** [ Time-Slice Scheduling ]*************************************************/
@@ -95,12 +95,18 @@
 
 #if (K_DEF_MESGQ == ON)
 
+/*** Synch methods					*/
+#define K_DEF_SYNCH_MESGQ				(ON)
 
-/*** Asynch methods					*/
-#define K_DE_AMESGQ					  (ON)
+#if (K_DEF_SYNCH_MESGQ==ON)
 
 /*** Queue Discipline				*/
 #define K_DEF_MESGQ_ENQ	   (K_DEF_ENQ_PRIO)
+
+#endif
+
+/*** Asynch methods					*/
+#define K_DEF_ASYNCH_MESGQ		  	(ON)
 
 #endif /*mesgq*/
 

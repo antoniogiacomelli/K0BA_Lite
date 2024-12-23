@@ -78,23 +78,11 @@ typedef struct kTcb TCB;
  *                          ))
  *******************************************************************************/
 
-/* SYNCH PRIMITIVES */
 
-#define SEMINIT                      kSemaInit
-#define SEMUP                        kSemaSignal
-#define SEMDWN                       kSemaWait
-#define LOCK                         kMutexLock
-#define UNLOCK                       kMutexUnlock
-#define LOCKINIT                     kMutexInit
 #define SLPEVNT                      kEventSleep
 #define WKEVNT                       kEventWake
 #define EVNTINIT                     kEventInit
 
-/* List */
-#define QUEUEINIT 			    	 kListInit
-#define ENQUEUE		 			     kListAddTail
-#define DEQUEUE				    	 kListRemoveHead
-#define ENQJAM 				    	 kListAddHead
 
 /* Mem Block Pool */
 #define BLKPOOLINIT                  kMemInit

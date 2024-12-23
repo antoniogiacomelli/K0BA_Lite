@@ -35,10 +35,9 @@ K_ERR kMemInit(K_MEM* const kobj, ADDR const memPoolPtr,
         K_EXIT_CR
         return (K_ERR_MEM_INIT);
     }
-#if (K_DEF_MEMBLOCK_ALIGN_4==ON)
     /*round up to next value multiple of 4 (if not a multiple)*/
     blkSize = (blkSize + 0x03) & 0xFC;
-#endif
+
     /* initialise freelist of blocks */
 
     BYTE* blockPtr = (BYTE*) memPoolPtr; /* first byte address in the pool  */

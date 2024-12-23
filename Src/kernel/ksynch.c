@@ -140,9 +140,10 @@ VOID kEventSleep(K_EVENT *kobj, TICK timeout)
 
 	if (kobj->init == TRUE)
 	{
-		kTimeOut(&kobj->timeoutNode, timeout);
+		if (timeout > 0)
+			kTimeOut(&kobj->timeoutNode, timeout);
 
-		kTCBQEnq(&sleepingQueue, runPtr);
+		kTCBQEnq(&kobj->waitingQueue, runPtr);
 		runPtr->status=SLEEPING;
 		runPtr->pendingEv = kobj;
 		K_PEND_CTXTSWTCH
