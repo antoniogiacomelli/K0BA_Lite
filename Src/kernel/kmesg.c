@@ -112,21 +112,12 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 			K_ENTER_CR
 			if (runPtr->timeOut)
 			{
-				runPtr->timeOut = FALSE
-				;
+				runPtr->timeOut = FALSE	;
 				K_EXIT_CR
 				return (K_ERR_TIMEOUT);
 			}
 		} while (kobj->mailPtr != NULL);
 	}
-	if ((kobj->owner != NULL)
-			&& (kobj->owner->priority != kobj->owner->realPrio))
-	{
-		kobj->owner->priority = kobj->owner->realPrio;
-	}
-	kobj->owner = runPtr;
-	kobj->senderTID = runPtr->uPid;
-	kobj->mailPtr = sendPtr;
 	/*  full: unblock a reader, if any */
 	if (kobj->waitingQueue.size > 0)
 	{
@@ -139,6 +130,10 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 		if (freeReadPtr->priority < runPtr->priority)
 			K_PEND_CTXTSWTCH
 	}
+	kobj->owner = runPtr;
+	kobj->senderTID = runPtr->uPid;
+	kobj->mailPtr = sendPtr;
+
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -914,8 +909,7 @@ K_ERR kPipeInit(K_PIPE *const kobj)
 	err = EVNTINIT(&(kobj->evRoom));
 	if (err < 0)
 		return (err);
-	kobj->init = TRUE
-	;
+	kobj->init = TRUE;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -1014,3 +1008,4 @@ UINT32 kPipeWrite(K_PIPE *const kobj, BYTE *srcPtr, UINT32 nBytes)
 	return (writeBytes);
 }
 #endif /*K_DEF_PIPES*/
+
