@@ -118,6 +118,11 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 			}
 		} while (kobj->mailPtr != NULL);
 	}
+	if (kobj->owner && (kobj->owner->priority != kobj->owner->realPrio))
+		kobj->owner->priority = kobj->owner->realPrio;
+	kobj->senderTID = runPtr->uPid;
+	kobj->mailPtr = sendPtr;
+	kobj->owner = runPtr;
 	/*  full: unblock a reader, if any */
 	if (kobj->waitingQueue.size > 0)
 	{
@@ -130,10 +135,6 @@ K_ERR kMboxSend(K_MBOX *const kobj, ADDR const sendPtr, TICK timeout)
 		if (freeReadPtr->priority < runPtr->priority)
 			K_PEND_CTXTSWTCH
 	}
-	kobj->owner = runPtr;
-	kobj->senderTID = runPtr->uPid;
-	kobj->mailPtr = sendPtr;
-
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
@@ -190,10 +191,11 @@ K_ERR kMboxRecv(K_MBOX *const kobj, ADDR *recvPPtr, TID *senderIDPtr,
 			}
 		} while (kobj->mailPtr == NULL);
 	}
-
-	kobj->owner = runPtr;
+	if (kobj->owner->priority != kobj->owner->realPrio)
+		kobj->owner->priority = kobj->owner->realPrio;
 	*recvPPtr = kobj->mailPtr;
 	kobj->mailPtr = NULL;
+	kobj->owner = runPtr;
 
 	/* empty: unblock a writer, if any */
 	if (kobj->waitingQueue.size > 0)
@@ -460,6 +462,7 @@ K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK const timeout)
 	{
 		kobj->owner->priority = kobj->owner->realPrio;
 	}
+	kobj->owner = runPtr;
 
 	/* was empty ?*/
 	if ((kobj->waitingQueue.size > 0) && (kobj->mesgCnt == 1))
@@ -474,7 +477,6 @@ K_ERR kMesgQSend(K_MESGQ *const kobj, ADDR const sendPtr, TICK const timeout)
 			K_PEND_CTXTSWTCH
 		}
 	}
-	kobj->owner = runPtr;
 	K_EXIT_CR
 	return (K_SUCCESS);
 }
