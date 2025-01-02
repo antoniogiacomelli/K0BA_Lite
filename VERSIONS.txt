@@ -1,0 +1,16 @@
+VERSION 0.3.1 02/01/2025  (DD/MM/YYYY)
+======================================
+
+Major version still '0'.
+
+CHANGES: 
+-- Mailboxes does not have the sender ID on the API, anymore.
+-- Added sendrecv() API for mailboxes.
+-- kSuspend(tid) API. A RUNNING task can suspend a READY task with lower or equal priority.
+		      An ISR can suspend any RUNNING/READY task.
+		      The same kSignal(id) API is used to READY the task again.
+
+FIXED:  
+-- Pump Drop Messages Bug when pumping a reused buffer with 0 readers.
+-- Semaphores were reassigning an owner after signalling. 
+
